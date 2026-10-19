@@ -38,7 +38,9 @@
     "helmet": "^8.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "zod": "^3.25.76"
+    "tsx": "^4.20.3",
+    "zod": "^3.25.76",
+    "dotenv": "^18.0.8"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.10",
@@ -46,9 +48,7 @@
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.16.5",
-    "dotenv": "^18.0.8",
     "prisma": "6.19.3",
-    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   },
   "overrides": {

@@ -89,6 +89,11 @@ async function guardAgainstRealData() {
 }
 
 async function main() {
+  const userCount = await prisma.user.count();
+  if (userCount > 0 && process.env.SEED_FORCE !== '1') {
+    console.log(`Database already has ${userCount} users. Skipping seed.`);
+    return;
+  }
   await guardAgainstRealData();
   console.log('Truncating tables…');
   await truncateAll();

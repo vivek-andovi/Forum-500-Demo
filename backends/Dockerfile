@@ -26,5 +26,5 @@ COPY --chown=node:node package.json ./
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD sh -c "wget -qO- http://localhost:\${PORT:-4000}/api/health || exit 1"
-# Apply pending migrations (idempotent), then start the server.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Apply pending migrations (idempotent), seed initial data if empty, then start the server.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed && node dist/main"]
