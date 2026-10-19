@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AssetsReadWrite",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::forum500-assets-prod/uploads/*"
+    },
+    {
+      "Sid": "AssetsHead",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::forum500-assets-prod",
+      "Condition": { "StringLike": { "s3:prefix": ["uploads/*"] } }
+    },
+    {
+      "Sid": "SendEmail",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+      "Resource": "*",
+      "Condition": { "StringEquals": { "ses:FromAddress": "no-reply@forum500.club" } }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": ["https://admin.forum500.club"],
+      "AllowedMethods": ["PUT"],
+      "AllowedHeaders": ["content-type"],
+      "MaxAgeSeconds": 3000
+    }
+  ]
+}

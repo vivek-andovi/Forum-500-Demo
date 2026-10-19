@@ -1,0 +1,1223 @@
+// Forum500 — single source of truth for all data shown in the member app.
+// Conventions: uuid ids, slugs where URLs need them, `status` + publish window for
+// anything admins publish, timestamptz everywhere, money as cents + currency.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum UserRole {
+  admin
+  member
+}
+
+enum UserStatus {
+  invited
+  active
+  suspended
+}
+
+/// Shared lifecycle for admin-published content and member submissions.
+enum ContentStatus {
+  draft
+  in_review
+  scheduled
+  published
+  archived
+  rejected
+}
+
+enum Visibility {
+  public
+  members
+}
+
+enum ProfileStatus {
+  draft
+  pending_review
+  published
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ApplicationStatus {
+  new
+  in_review
+  approved
+  rejected
+  waitlisted
+}
+
+enum BenefitKind {
+  member
+  partner
+}
+
+enum MembershipRequestStatus {
+  requested
+  approved
+  rejected
+  left
+}
+
+enum EventKind {
+  Salon
+  Dinner
+  Reception
+  Roundtable
+}
+
+enum RsvpStatus {
+  interested
+  confirmed
+  waitlisted
+  declined
+  cancelled
+}
+
+enum VenueCategory {
+  Restaurants
+  Clubs
+  Studios
+  Salons
+  Hotels
+  Private_homes
+}
+
+enum PhotoKind {
+  Curated
+  Candid
+}
+
+enum Publication {
+  inforum
+  forecast
+  member
+}
+
+enum PitchFormat {
+  article
+  dispatch
+  interview
+  photo_essay
+  opinion
+  forecast
+}
+
+enum RecommendationCategory {
+  eat
+  stay
+  travel
+  read
+}
+
+enum CommentTarget {
+  edition
+  article
+  feed_post
+}
+
+enum LibraryKind {
+  Annual_Report
+  Journal
+}
+
+enum IntroductionStatus {
+  requested
+  pending
+  accepted
+  declined
+}
+
+enum ActionType {
+  review
+  approve
+  sign
+  pay
+  fill
+}
+
+enum ActionContext {
+  Membership
+  Events
+  Media
+  Communications
+  Benefits
+}
+
+enum ActionStatus {
+  pending
+  completed
+  dismissed
+  overdue
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  sent
+}
+
+enum NotificationType {
+  new_member
+  rsvp_reminder
+  publication
+  profile_view
+  approval
+  general
+}
+
+enum ConciergeStatus {
+  open
+  answered
+  closed
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String?
+  role         UserRole   @default(member)
+  status       UserStatus @default(invited)
+  lastLoginAt  DateTime?  @db.Timestamptz
+  /// Incremented to revoke every token issued so far (logout-all, password change, suspension).
+  tokenVersion Int        @default(0)
+  /// Consecutive failed logins; the account locks temporarily after too many.
+  failedLogins Int        @default(0)
+  lockedUntil  DateTime?  @db.Timestamptz
+  createdAt    DateTime   @default(now()) @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @db.Timestamptz
+
+  member     Member?
+  authTokens AuthToken[]
+}
+
+enum AuthTokenType {
+  invite
+  password_reset
+}
+
+/// One-time tokens for invite (set first password) and password-reset links.
+/// Only a SHA-256 hash of the token is stored.
+model AuthToken {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime      @db.Timestamptz
+  usedAt    DateTime?     @db.Timestamptz
+  createdAt DateTime      @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────── Membership ────────────────────────────
+
+model Chapter {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique
+  country         String?
+  isChapter       Boolean  @default(false) /// true = appears in directory/profile chapter list
+  whatsappEnabled Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  members        Member[]
+  events         Event[]
+  venues         Venue[]
+  whatsappGroups WhatsappGroup[]
+  albums         GalleryAlbum[]
+}
+
+model Sector {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  members Member[]
+}
+
+model MembershipTier {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  priceCents  Int?
+  currency    String   @default("GBP")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  members Member[]
+}
+
+/// The "five questions" every member answers on their profile.
+model ProfileQuestion {
+  id        String   @id @default(uuid()) @db.Uuid
+  text      String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  answers MemberQuestionAnswer[]
+}
+
+model Member {
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String?       @unique @db.Uuid
+  slug              String        @unique
+  fullName          String
+  headline          String?
+  company           String?
+  email             String?
+  phone             String?
+  bio               String?
+  avatarUrl         String?
+  linkedinUrl       String?
+  interests         String[]      @default([])
+  travelCities      String[]      @default([])
+  joinedYear        Int?
+  chapterId         String?       @db.Uuid
+  sectorId          String?       @db.Uuid
+  tierId            String?       @db.Uuid
+  isPublished       Boolean       @default(true)
+  profileStatus     ProfileStatus @default(published)
+  /// Featured in "New Members" carousel + dashboard.
+  featuredNewMember Boolean       @default(false)
+  /// Featured Q&A shown on the New Members card.
+  spotlightQuestion String?
+  spotlightAnswer   String?
+  createdAt         DateTime      @default(now()) @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @db.Timestamptz
+
+  user    User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  chapter Chapter?        @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  sector  Sector?         @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  tier    MembershipTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+
+  answers              MemberQuestionAnswer[]
+  interviews           MemberInterviewQA[]
+  revisions            ProfileRevision[]
+  benefitOffers        BenefitOffer[]
+  benefitOptIns        BenefitOptIn[]
+  groupMemberships     GroupMembership[]
+  proposedGroups       Group[]                   @relation("GroupProposer")
+  eventHosts           EventHost[]
+  eventRsvps           EventRsvp[]
+  proposedEvents       Event[]                   @relation("EventProposer")
+  photoTags            MemberPhotoTag[]
+  articles             Article[]
+  pitches              Pitch[]
+  recommendations      Recommendation[]
+  comments             Comment[]
+  commentRecommends    CommentRecommend[]
+  podcastAppearances   PodcastEpisode[]
+  books                Book[]
+  bookRecommendations  BookRecommendation[]
+  feedPosts            FeedPost[]
+  feedLikes            FeedLike[]
+  introsRequested      Introduction[]            @relation("IntroRequester")
+  introsReceived       Introduction[]            @relation("IntroTarget")
+  introsMade           Introduction[]            @relation("IntroIntroducer")
+  whatsappMemberships  WhatsappMembership[]
+  moderatedWhatsapp    WhatsappGroup[]           @relation("WhatsappModerator")
+  emailDeliveries      EmailDelivery[]
+  notifications        Notification[]
+  actions              ActionItem[]
+  conciergeRequests    ConciergeRequest[]
+  conversations        ConversationParticipant[]
+  sentMessages         Message[]
+  whatsappMessages     WhatsappMessage[]
+  applicationsReferred Application[]
+}
+
+model MemberQuestionAnswer {
+  id         String   @id @default(uuid()) @db.Uuid
+  memberId   String   @db.Uuid
+  questionId String   @db.Uuid
+  answer     String
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  member   Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  question ProfileQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, questionId])
+}
+
+/// Long-form "new member interview" Q&A shown in the directory carousel.
+model MemberInterviewQA {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+/// A member's submitted profile edit awaiting admin review.
+model ProfileRevision {
+  id           String       @id @default(uuid()) @db.Uuid
+  memberId     String       @db.Uuid
+  changes      Json
+  status       ReviewStatus @default(pending)
+  reviewerNote String?
+  reviewedAt   DateTime?    @db.Timestamptz
+  createdAt    DateTime     @default(now()) @db.Timestamptz
+  updatedAt    DateTime     @updatedAt @db.Timestamptz
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Application {
+  id                  String            @id @default(uuid()) @db.Uuid
+  fullName            String
+  email               String
+  phone               String?
+  linkedin            String?
+  role                String
+  company             String
+  sector              String
+  city                String
+  country             String
+  travelCities        String[]          @default([])
+  recommenderName     String
+  recommenderMemberId String?           @db.Uuid
+  recommenderRelation String?
+  whyJoin             String
+  contribution        String
+  about               String?
+  status              ApplicationStatus @default(new)
+  decisionNote        String?
+  decidedAt           DateTime?         @db.Timestamptz
+  createdAt           DateTime          @default(now()) @db.Timestamptz
+  updatedAt           DateTime          @updatedAt @db.Timestamptz
+
+  recommender Member? @relation(fields: [recommenderMemberId], references: [id], onDelete: SetNull)
+}
+
+// ───────────────────────── Benefits & groups ─────────────────────────
+
+model BenefitCategory {
+  id        String      @id @default(uuid()) @db.Uuid
+  name      String      @unique
+  kind      BenefitKind
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now()) @db.Timestamptz
+  updatedAt DateTime    @updatedAt @db.Timestamptz
+
+  offers BenefitOffer[]
+}
+
+model BenefitOffer {
+  id               String        @id @default(uuid()) @db.Uuid
+  slug             String        @unique
+  kind             BenefitKind
+  title            String
+  offer            String
+  categoryId       String?       @db.Uuid
+  providerMemberId String?       @db.Uuid
+  providerName     String
+  providerRole     String?
+  location         String?
+  about            String?
+  detail           String?
+  howToRedeem      String?
+  imageUrl         String?
+  companyImageUrl  String?
+  featured         Boolean       @default(false)
+  sortOrder        Int           @default(0)
+  status           ContentStatus @default(published)
+  publishAt        DateTime?     @db.Timestamptz
+  unpublishAt      DateTime?     @db.Timestamptz
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+
+  category       BenefitCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  providerMember Member?          @relation(fields: [providerMemberId], references: [id], onDelete: SetNull)
+  optIns         BenefitOptIn[]
+}
+
+model BenefitOptIn {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  offerId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  member Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  offer  BenefitOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, offerId])
+}
+
+model Group {
+  id           String        @id @default(uuid()) @db.Uuid
+  slug         String        @unique
+  name         String
+  note         String?
+  purpose      String?
+  cadence      String?
+  coverUrl     String?
+  status       ContentStatus @default(published)
+  proposedById String?       @db.Uuid
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now()) @db.Timestamptz
+  updatedAt    DateTime      @updatedAt @db.Timestamptz
+
+  proposedBy  Member?           @relation("GroupProposer", fields: [proposedById], references: [id], onDelete: SetNull)
+  memberships GroupMembership[]
+}
+
+model GroupMembership {
+  id        String                  @id @default(uuid()) @db.Uuid
+  groupId   String                  @db.Uuid
+  memberId  String                  @db.Uuid
+  status    MembershipRequestStatus @default(requested)
+  createdAt DateTime                @default(now()) @db.Timestamptz
+  updatedAt DateTime                @updatedAt @db.Timestamptz
+
+  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, memberId])
+}
+
+// ────────────────────────────── Events ──────────────────────────────
+
+model Venue {
+  id             String        @id @default(uuid()) @db.Uuid
+  slug           String        @unique
+  name           String
+  chapterId      String?       @db.Uuid
+  city           String
+  category       VenueCategory
+  access         String?
+  description    String?
+  imageUrl       String?
+  privateAddress String?
+  status         ContentStatus @default(published)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  events  Event[]
+}
+
+model Event {
+  id                 String        @id @default(uuid()) @db.Uuid
+  slug               String        @unique
+  title              String
+  kind               EventKind
+  city               String
+  chapterId          String?       @db.Uuid
+  venueId            String?       @db.Uuid
+  venueText          String?
+  startsAt           DateTime      @db.Timestamptz
+  endsAt             DateTime?     @db.Timestamptz
+  allDay             Boolean       @default(false)
+  /// Human-friendly overrides used by the prototype (e.g. "All weekend").
+  dateLabel          String?
+  timeLabel          String?
+  description        String?
+  imageUrl           String?
+  privateAddress     String?
+  addressRevealHours Int           @default(48)
+  capacity           Int?
+  inviteAudiences    String[]      @default([])
+  supportRequested   String[]      @default([])
+  featured           Boolean       @default(false)
+  status             ContentStatus @default(published)
+  visibility         Visibility    @default(members)
+  proposedById       String?       @db.Uuid
+  reviewNote         String?
+  createdAt          DateTime      @default(now()) @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @db.Timestamptz
+
+  chapter    Chapter?       @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  venue      Venue?         @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  proposedBy Member?        @relation("EventProposer", fields: [proposedById], references: [id], onDelete: SetNull)
+  hosts      EventHost[]
+  rsvps      EventRsvp[]
+  albums     GalleryAlbum[]
+}
+
+model EventHost {
+  id       String @id @default(uuid()) @db.Uuid
+  eventId  String @db.Uuid
+  memberId String @db.Uuid
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, memberId])
+}
+
+model EventRsvp {
+  id          String     @id @default(uuid()) @db.Uuid
+  eventId     String     @db.Uuid
+  memberId    String     @db.Uuid
+  status      RsvpStatus @default(confirmed)
+  plusOnes    Int        @default(0)
+  dietaryNote String?
+  createdAt   DateTime   @default(now()) @db.Timestamptz
+  updatedAt   DateTime   @updatedAt @db.Timestamptz
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, memberId])
+}
+
+model GalleryAlbum {
+  id        String        @id @default(uuid()) @db.Uuid
+  slug      String        @unique
+  title     String
+  eventId   String?       @db.Uuid
+  chapterId String?       @db.Uuid
+  city      String
+  dateLabel String
+  takenOn   DateTime?     @db.Timestamptz
+  coverUrl  String?
+  status    ContentStatus @default(published)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now()) @db.Timestamptz
+  updatedAt DateTime      @updatedAt @db.Timestamptz
+
+  event   Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  chapter Chapter?       @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  photos  GalleryPhoto[]
+}
+
+model GalleryPhoto {
+  id        String    @id @default(uuid()) @db.Uuid
+  albumId   String    @db.Uuid
+  caption   String?
+  url       String
+  kind      PhotoKind @default(Curated)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+
+  album GalleryAlbum     @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  tags  MemberPhotoTag[]
+}
+
+model MemberPhotoTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  photoId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  member Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  photo  GalleryPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, photoId])
+}
+
+// ─────────────────────────────── Media ───────────────────────────────
+
+model InforumSection {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  label     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  articles Article[]
+}
+
+model InforumEdition {
+  id          String        @id @default(uuid()) @db.Uuid
+  slug        String        @unique
+  label       String
+  publishedOn DateTime      @db.Timestamptz
+  coverLine   String?
+  coverUrl    String?
+  status      ContentStatus @default(published)
+  visibility  Visibility    @default(members)
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+
+  articles EditionArticle[]
+}
+
+model EditionArticle {
+  id        String @id @default(uuid()) @db.Uuid
+  editionId String @db.Uuid
+  articleId String @db.Uuid
+  sortOrder Int    @default(0)
+
+  edition InforumEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  article Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([editionId, articleId])
+}
+
+model ForecastIssue {
+  id            String        @id @default(uuid()) @db.Uuid
+  slug          String        @unique
+  issue         String
+  title         String
+  dateLabel     String
+  publishedOn   DateTime?     @db.Timestamptz
+  coverUrl      String?
+  letterTitle   String?
+  letterBody    String[]      @default([])
+  letterSignoff String?
+  pdfUrl        String?
+  status        ContentStatus @default(published)
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @db.Timestamptz
+
+  articles Article[]
+}
+
+/// One table for In:Forum, Forecast and member articles.
+model Article {
+  id              String        @id @default(uuid()) @db.Uuid
+  slug            String        @unique
+  publication     Publication
+  title           String
+  standfirst      String?
+  body            String[]      @default([])
+  sectionId       String?       @db.Uuid
+  sectionLabel    String?
+  forecastIssueId String?       @db.Uuid
+  authorMemberId  String?       @db.Uuid
+  authorName      String
+  authorRole      String?
+  authorPhotoUrl  String?
+  isMember        Boolean       @default(false)
+  editorsChoice   Boolean       @default(false)
+  fromAroundWorld Boolean       @default(false)
+  dateline        String?
+  dateLabel       String?
+  readMinutes     Int?
+  imageUrl        String?
+  caption         String?
+  sortOrder       Int           @default(0)
+  status          ContentStatus @default(published)
+  visibility      Visibility    @default(members)
+  publishedAt     DateTime?     @db.Timestamptz
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+
+  section       InforumSection?  @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  forecastIssue ForecastIssue?   @relation(fields: [forecastIssueId], references: [id], onDelete: SetNull)
+  authorMember  Member?          @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+  editions      EditionArticle[]
+  pitches       Pitch[]
+}
+
+model Pitch {
+  id        String       @id @default(uuid()) @db.Uuid
+  memberId  String?      @db.Uuid
+  headline  String
+  synopsis  String
+  section   String
+  format    PitchFormat  @default(article)
+  dateline  String?
+  notes     String?
+  status    ReviewStatus @default(pending)
+  articleId String?      @db.Uuid
+  createdAt DateTime     @default(now()) @db.Timestamptz
+  updatedAt DateTime     @updatedAt @db.Timestamptz
+
+  member  Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  article Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+}
+
+model Recommendation {
+  id             String                 @id @default(uuid()) @db.Uuid
+  category       RecommendationCategory
+  title          String
+  place          String?
+  note           String?
+  memberId       String?                @db.Uuid
+  memberName     String
+  memberPhotoUrl String?
+  memberChapter  String?
+  imageUrl       String?
+  status         ContentStatus          @default(published)
+  createdAt      DateTime               @default(now()) @db.Timestamptz
+  updatedAt      DateTime               @updatedAt @db.Timestamptz
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+}
+
+model Comment {
+  id             String        @id @default(uuid()) @db.Uuid
+  targetType     CommentTarget @default(edition)
+  targetId       String?
+  parentId       String?       @db.Uuid
+  memberId       String?       @db.Uuid
+  memberName     String
+  memberPhotoUrl String?
+  memberChapter  String?
+  body           String
+  recommends     Int           @default(0)
+  status         ContentStatus @default(published)
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  parent      Comment?           @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[]          @relation("CommentReplies")
+  member      Member?            @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  recommendBy CommentRecommend[]
+}
+
+model CommentRecommend {
+  id        String   @id @default(uuid()) @db.Uuid
+  commentId String   @db.Uuid
+  memberId  String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, memberId])
+}
+
+model PodcastEpisode {
+  id              String        @id @default(uuid()) @db.Uuid
+  slug            String        @unique
+  number          Int
+  title           String
+  description     String?
+  guestName       String
+  guestMemberId   String?       @db.Uuid
+  durationMinutes Int?
+  audioUrl        String?
+  spotifyUrl      String?
+  appleUrl        String?
+  coverUrl        String?
+  status          ContentStatus @default(published)
+  publishedAt     DateTime?     @db.Timestamptz
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+
+  guestMember Member? @relation(fields: [guestMemberId], references: [id], onDelete: SetNull)
+}
+
+model Book {
+  id             String        @id @default(uuid()) @db.Uuid
+  title          String
+  authorName     String
+  authorMemberId String?       @db.Uuid
+  /// true = written by a Forum member ("Member Books")
+  isMemberBook   Boolean       @default(false)
+  note           String?
+  coverUrl       String?
+  buyUrl         String?
+  status         ContentStatus @default(published)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  authorMember    Member?              @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+  recommendations BookRecommendation[]
+}
+
+/// "Recommended books" and "What to read by Jess & Simon".
+model BookRecommendation {
+  id                String        @id @default(uuid()) @db.Uuid
+  bookId            String?       @db.Uuid
+  title             String
+  note              String?
+  recommendedByName String
+  recommendedById   String?       @db.Uuid
+  chapter           String?
+  /// true = shown on "What to read" curated page
+  isCuratedPick     Boolean       @default(false)
+  status            ContentStatus @default(published)
+  sortOrder         Int           @default(0)
+  createdAt         DateTime      @default(now()) @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @db.Timestamptz
+
+  book          Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  recommendedBy Member? @relation(fields: [recommendedById], references: [id], onDelete: SetNull)
+}
+
+model LibraryItem {
+  id          String        @id @default(uuid()) @db.Uuid
+  slug        String        @unique
+  title       String
+  kind        LibraryKind
+  pages       Int?
+  description String?
+  coverUrl    String?
+  fileUrl     String?
+  status      ContentStatus @default(published)
+  publishedAt DateTime?     @db.Timestamptz
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+}
+
+model FeedPost {
+  id             String        @id @default(uuid()) @db.Uuid
+  memberId       String?       @db.Uuid
+  authorName     String
+  authorMeta     String?
+  authorPhotoUrl String?
+  body           String
+  imageUrl       String?
+  imageAlt       String?
+  likes          Int           @default(0)
+  pinned         Boolean       @default(false)
+  status         ContentStatus @default(published)
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  member  Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  likedBy FeedLike[]
+}
+
+model FeedLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  memberId  String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  post   FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  member Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, memberId])
+}
+
+// ─────────────────────────── Communications ───────────────────────────
+
+model Introduction {
+  id             String             @id @default(uuid()) @db.Uuid
+  requesterId    String?            @db.Uuid
+  targetId       String             @db.Uuid
+  introducerId   String?            @db.Uuid
+  introducerName String?
+  reason         String?
+  status         IntroductionStatus @default(pending)
+  respondedAt    DateTime?          @db.Timestamptz
+  createdAt      DateTime           @default(now()) @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @db.Timestamptz
+
+  requester  Member? @relation("IntroRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  target     Member  @relation("IntroTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  introducer Member? @relation("IntroIntroducer", fields: [introducerId], references: [id], onDelete: SetNull)
+}
+
+model WhatsappGroup {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  chapterId   String?  @db.Uuid
+  inviteLink  String?
+  moderatorId String?  @db.Uuid
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  chapter     Chapter?             @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  moderator   Member?              @relation("WhatsappModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  memberships WhatsappMembership[]
+  messages    WhatsappMessage[]
+}
+
+model WhatsappMembership {
+  id        String                  @id @default(uuid()) @db.Uuid
+  groupId   String                  @db.Uuid
+  memberId  String                  @db.Uuid
+  status    MembershipRequestStatus @default(requested)
+  createdAt DateTime                @default(now()) @db.Timestamptz
+  updatedAt DateTime                @updatedAt @db.Timestamptz
+
+  group  WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, memberId])
+}
+
+model EmailCampaign {
+  id          String         @id @default(uuid()) @db.Uuid
+  subject     String
+  senderLabel String         @default("Forum Team")
+  preview     String?
+  body        String?
+  audience    Json?
+  status      CampaignStatus @default(draft)
+  scheduledAt DateTime?      @db.Timestamptz
+  sentAt      DateTime?      @db.Timestamptz
+  createdAt   DateTime       @default(now()) @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @db.Timestamptz
+
+  deliveries EmailDelivery[]
+}
+
+model EmailDelivery {
+  id         String    @id @default(uuid()) @db.Uuid
+  campaignId String    @db.Uuid
+  memberId   String    @db.Uuid
+  openedAt   DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  member   Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, memberId])
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  memberId  String?          @db.Uuid /// null = broadcast to all members
+  type      NotificationType @default(general)
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?        @db.Timestamptz
+  createdAt DateTime         @default(now()) @db.Timestamptz
+  updatedAt DateTime         @updatedAt @db.Timestamptz
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model ActionItem {
+  id          String        @id @default(uuid()) @db.Uuid
+  memberId    String?       @db.Uuid /// null = assigned to every member
+  type        ActionType
+  context     ActionContext
+  title       String
+  detail      String?
+  dueAt       DateTime?     @db.Timestamptz
+  amountCents Int?
+  currency    String?
+  documentUrl String?
+  status      ActionStatus  @default(pending)
+  completedAt DateTime?     @db.Timestamptz
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model ConciergeRequest {
+  id         String          @id @default(uuid()) @db.Uuid
+  memberId   String?         @db.Uuid
+  promptType String?
+  body       String
+  status     ConciergeStatus @default(open)
+  adminReply String?
+  createdAt  DateTime        @default(now()) @db.Timestamptz
+  updatedAt  DateTime        @updatedAt @db.Timestamptz
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+}
+
+// ───────────────────────────── Platform ─────────────────────────────
+
+/// Simple CMS pages: club rules, about, home blocks.
+/// CMS page content. Public pages use slugs "home", "about", "inforum", "apply";
+/// member pages use their route, e.g. "membership/benefits", for their header copy.
+model Page {
+  id              String        @id @default(uuid()) @db.Uuid
+  slug            String        @unique
+  title           String
+  eyebrow         String?
+  subtitle        String?
+  body            String?
+  heroImageUrl    String?
+  heroImageAlt    String?
+  ctaLabel        String?
+  ctaHref         String?
+  /// Extra page sections: [{ key, eyebrow, title, body, imageUrl, imageAlt, ctaLabel, ctaHref }]
+  blocks          Json?
+  /// SEO description for public pages.
+  metaDescription String?
+  status          ContentStatus @default(published)
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
+}
+
+enum NavMenu {
+  member_sidebar
+  site_header
+  site_footer
+}
+
+/// Admin-managed navigation (member sidebar hubs, public header and footer links).
+model NavItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  menu      NavMenu
+  parentId  String?  @db.Uuid
+  label     String
+  href      String?
+  /// lucide icon name, e.g. "Users", "CalendarDays"
+  icon      String?
+  /// Highlighted entry (e.g. Ask Zola).
+  highlight Boolean  @default(false)
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  parent   NavItem?  @relation("NavTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children NavItem[] @relation("NavTree")
+}
+
+/// Cards and tiles on public pages, e.g. the "Engage with Forum" grid on the home page.
+model ContentCard {
+  id          String   @id @default(uuid()) @db.Uuid
+  placement   String   @default("home_engage")
+  title       String
+  description String?
+  icon        String?
+  href        String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+}
+
+/// "Member Benefits" list on the public About page.
+model ClubBenefit {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+}
+
+/// Quick-prompt chips on the Ask Zola page.
+model QuickPrompt {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  label     String
+  template  String   @default("")
+  icon      String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+// ─────────────────────────── Direct messages ───────────────────────────
+
+model Conversation {
+  id            String   @id @default(uuid()) @db.Uuid
+  /// Sorted "memberA:memberB" for 1:1 conversations, so each pair has exactly one thread.
+  pairKey       String?  @unique
+  lastMessageAt DateTime @default(now()) @db.Timestamptz
+  createdAt     DateTime @default(now()) @db.Timestamptz
+  updatedAt     DateTime @updatedAt @db.Timestamptz
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @db.Uuid
+  memberId       String    @db.Uuid
+  lastReadAt     DateTime? @db.Timestamptz
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  member       Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, memberId])
+}
+
+model Message {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  senderId       String?  @db.Uuid
+  body           String
+  createdAt      DateTime @default(now()) @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       Member?      @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+}
+
+/// Messages posted in a chapter group's chat inside the Forum app (moderated).
+model WhatsappMessage {
+  id         String        @id @default(uuid()) @db.Uuid
+  groupId    String        @db.Uuid
+  memberId   String?       @db.Uuid
+  authorName String
+  body       String
+  status     ContentStatus @default(published)
+  createdAt  DateTime      @default(now()) @db.Timestamptz
+  updatedAt  DateTime      @updatedAt @db.Timestamptz
+
+  group  WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member Member?       @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+model Asset {
+  id         String   @id @default(uuid()) @db.Uuid
+  url        String
+  storageKey String
+  /// "local" (dev disk) or "s3".
+  driver     String   @default("local")
+  filename   String
+  mime       String
+  size       Int
+  uploadedBy String?  @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz
+}
+
+/// Human-readable record of every admin change: who did what to which record.
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorId     String?  @db.Uuid
+  /// Snapshot of the actor at the time (kept even if the user is later deleted).
+  actorEmail  String?
+  actorName   String?
+  action      String
+  /// Resource key, e.g. "events".
+  entity      String
+  /// Human label of the resource type, e.g. "Event".
+  entityType  String?
+  entityId    String?
+  /// Title of the affected record, e.g. "London Evening Salon & Dinner".
+  entityLabel String?
+  /// One-line description, e.g. "Updated Event “London Evening Salon” — Title, Capacity".
+  summary     String?
+  /// Field-level changes: [{ field, label, from, to }].
+  changes     Json?
+  ip          String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

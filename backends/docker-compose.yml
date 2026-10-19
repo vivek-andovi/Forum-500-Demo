@@ -1,0 +1,30 @@
+# Local development services. In AWS these are replaced by RDS (Postgres) and S3.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forum500-postgres
+    environment:
+      POSTGRES_USER: forum500
+      POSTGRES_PASSWORD: forum500
+      POSTGRES_DB: forum500
+    ports:
+      - "5433:5432"
+    volumes:
+      - forum500-pg:/var/lib/postgresql/data
+
+  # Optional: LocalStack emulates AWS (S3, SES) to test STORAGE_DRIVER=s3 / MAIL_DRIVER=ses locally.
+  # Start with: docker compose --profile aws up -d   (bucket created by scripts/localstack-init.sh)
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: forum500-localstack
+    profiles: ["aws"]
+    environment:
+      SERVICES: s3,ses
+      AWS_DEFAULT_REGION: eu-west-2
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+
+volumes:
+  forum500-pg:

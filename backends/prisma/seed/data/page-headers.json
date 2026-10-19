@@ -1,0 +1,132 @@
+{
+ "ask-zola": {
+  "eyebrow": "Concierge",
+  "title": "Ask Zola",
+  "subtitle": "Your Forum500 assistant. Ask a question, request an introduction, or find something in the community."
+ },
+ "comms/account": {
+  "eyebrow": "Communications Hub",
+  "title": "Account & Profile",
+  "subtitle": "What fellow members see in the directory. Keep it current — good introductions start here."
+ },
+ "comms/actions": {
+  "eyebrow": "Communications Hub",
+  "title": "Actions",
+  "subtitle": "Everything waiting on you — to review, approve, sign, pay or complete."
+ },
+ "comms/emails": {
+  "eyebrow": "Communications Hub",
+  "title": "Emails",
+  "subtitle": "Forum newsletters, chapter updates and member correspondence."
+ },
+ "comms/introductions": {
+  "eyebrow": "Communications Hub",
+  "title": "Member Introductions",
+  "subtitle": "Introductions made by Simon, Jessica and fellow members."
+ },
+ "comms/messages": {
+  "eyebrow": "Communications Hub",
+  "title": "Messages",
+  "subtitle": "Introductions and conversations with fellow members."
+ },
+ "comms/notifications": {
+  "eyebrow": "Communications Hub",
+  "title": "Notifications",
+  "subtitle": "Chapter news, event reminders and journal editions."
+ },
+ "comms/whatsapp": {
+  "eyebrow": "Communications Hub",
+  "title": "Chapter WhatsApp Groups",
+  "subtitle": "Request to join your chapter group. Once a chapter host approves you, chat with fellow members here and open the group in WhatsApp."
+ },
+ "dashboard": {
+  "eyebrow": "Dashboard",
+  "title": "Welcome back",
+  "subtitle": "Stay up to date with your Membership"
+ },
+ "events/gallery": {
+  "eyebrow": "Events Hub",
+  "title": "Gallery",
+  "subtitle": "Photographs from gatherings around the Forum — the curated shots and the candid ones. Member photography is shared within the membership only."
+ },
+ "events/my-events": {
+  "eyebrow": "Events Hub",
+  "title": "My Events",
+  "subtitle": "Everything you are attending or hosting, in one place — and where you propose a new gathering."
+ },
+ "events": {
+  "eyebrow": "Events Hub",
+  "title": "Events Calendar",
+  "subtitle": "Salons, dinners, receptions and roundtables across the chapters. RSVP from any event page."
+ },
+ "events/venues": {
+  "eyebrow": "Events Hub",
+  "title": "Venues",
+  "subtitle": "Restaurants, clubs, studios, salons and homes the Forum uses, or has preferred partnership access to."
+ },
+ "media/articles": {
+  "eyebrow": "Media Hub",
+  "title": "New Articles by Members",
+  "subtitle": "Essays, reporting and opinion written by Members for In:Forum and beyond."
+ },
+ "media/books": {
+  "eyebrow": "Media Hub",
+  "title": "Member Books",
+  "subtitle": "Books written by Members, and the books they recommend."
+ },
+ "media/forum-radio": {
+  "eyebrow": "Media Hub",
+  "title": "Forum Radio",
+  "subtitle": "The weekly podcast — long conversations with members about the ideas they are making happen."
+ },
+ "media/inforum": {
+  "eyebrow": "Media Hub",
+  "title": "In:Forum",
+  "subtitle": "The full member edition — reporting, essays and dispatches from the Forum500 community."
+ },
+ "media/library": {
+  "eyebrow": "Media Hub",
+  "title": "Library",
+  "subtitle": "The Forum's publications archive — the annual Forecast and every edition of IN:FORUM."
+ },
+ "media/newsfeed": {
+  "eyebrow": "Media Hub",
+  "title": "Newsfeed",
+  "subtitle": "Posts, photos and updates shared by members across the chapters."
+ },
+ "media/podcasts": {
+  "eyebrow": "Media Hub",
+  "title": "Podcasts",
+  "subtitle": "Conversations with members, partners and the thinkers shaping our world — every episode in one place."
+ },
+ "media/reading": {
+  "eyebrow": "Media Hub",
+  "title": "What to Read by Jess & Simon",
+  "subtitle": "A short, considered list from the Forum's founders, refreshed each month."
+ },
+ "membership/benefits": {
+  "eyebrow": "Membership Hub",
+  "title": "Member Benefits",
+  "subtitle": "Benefits offered by Members and by external partners. Opt in to the ones you want — new offers are reviewed and approved by the Forum team before they appear."
+ },
+ "membership/club-rules": {
+  "eyebrow": "Membership",
+  "title": "Club Rules",
+  "subtitle": "The principles that guide how we gather, share and look after one another."
+ },
+ "membership/groups": {
+  "eyebrow": "Membership Hub",
+  "title": "Member Groups",
+  "subtitle": "Interest-based groups within the Forum — open to every Member, and only Members. New groups and new joiners are approved by the Forum team."
+ },
+ "membership": {
+  "eyebrow": "Membership Hub",
+  "title": "Member Directory",
+  "subtitle": "Search fellow members by profession, city or interest — and be found by them."
+ },
+ "membership/profile": {
+  "eyebrow": "Membership Hub",
+  "title": "My Member Profile",
+  "subtitle": null
+ }
+}

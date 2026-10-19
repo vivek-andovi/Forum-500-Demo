@@ -1,0 +1,15 @@
+{
+  "name": "forum500-monorepo",
+  "private": true,
+  "description": "Forum500 — NestJS API (backends/) + Next.js admin & member apps (frontends/). Each app installs, builds and deploys independently.",
+  "scripts": {
+    "install:all": "npm --prefix backends install && npm --prefix frontends/admin install && npm --prefix frontends/web install",
+    "db:up": "npm --prefix backends run db:up",
+    "db:migrate": "npm --prefix backends run db:migrate",
+    "db:seed": "npm --prefix backends run db:seed",
+    "dev:api": "npm --prefix backends run start:dev",
+    "dev:admin": "npm --prefix frontends/admin run dev",
+    "dev:web": "npm --prefix frontends/web run dev",
+    "build:all": "npm --prefix backends run build && npm --prefix frontends/admin run build && npm --prefix frontends/web run build"
+  }
+}
