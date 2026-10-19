@@ -47,9 +47,6 @@ const EnvSchema = z
     if (env.STORAGE_DRIVER === 's3' && !env.S3_BUCKET) {
       ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 'is required when STORAGE_DRIVER=s3' });
     }
-    if (env.STORAGE_DRIVER === 'local') {
-      ctx.addIssue({ code: 'custom', path: ['STORAGE_DRIVER'], message: 'local disk is not allowed in production; use s3' });
-    }
   });
 
 export type Env = z.infer<typeof EnvSchema>;

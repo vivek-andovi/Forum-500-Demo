@@ -25,6 +25,6 @@ COPY --chown=node:node package.json ./
 # Run as the unprivileged "node" user.
 USER node
 EXPOSE 4000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD wget -qO- http://localhost:4000/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD sh -c "wget -qO- http://localhost:\${PORT:-4000}/api/health || exit 1"
 # Apply pending migrations (idempotent), then start the server.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
