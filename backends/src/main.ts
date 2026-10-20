@@ -18,8 +18,11 @@ async function bootstrap() {
   app.useBodyParser('urlencoded', { limit: '1mb', extended: false });
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  const origins = cfg.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  const allowAllOrigins = origins.includes('*') || cfg.CORS_ORIGINS === '*';
+
   app.enableCors({
-    origin: cfg.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
+    origin: allowAllOrigins ? true : origins,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,
