@@ -12,13 +12,16 @@ export const SYSTEM_RESOURCES: ResourceConfig[] = [
   {
     name: 'assets', model: 'Asset', label: 'Media Library', singular: 'Asset', group: 'System',
     labelField: 'filename', listColumns: ['url', 'filename', 'mime', 'size', 'driver', 'createdAt'], searchFields: ['filename'],
-    readOnlyFields: ['url', 'storageKey', 'driver', 'mime', 'size', 'uploadedBy'],
+    readOnlyFields: ['url', 'driver', 'mime', 'size', 'uploadedBy'],
+    // Internal storage path (uploads/<date>/<random>.ext); the filename is what admins recognise.
+    hidden: ['storageKey'],
     noCreate: true,
     defaultSort: { field: 'createdAt', order: 'desc' },
   },
   {
     name: 'audit-logs', model: 'AuditLog', label: 'Audit Log', singular: 'Audit Entry', group: 'System',
     labelField: 'summary',
+    idLabels: { from: { actorId: 'actorEmail', entityId: 'entityLabel' }, json: { changes: 'audit' } },
     listColumns: ['createdAt', 'actorEmail', 'action', 'entityType', 'entityLabel', 'summary'],
     searchFields: ['summary', 'entityLabel', 'actorEmail', 'entityType', 'action'],
     labels: {

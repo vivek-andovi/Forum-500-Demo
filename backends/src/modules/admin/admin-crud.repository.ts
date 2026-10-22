@@ -44,9 +44,12 @@ export class AdminCrudRepository {
   }
 
   // ── Specific lookups used by guard rails (checkUserWrite) and status notifications
-  /** Emails for createdBy/updatedBy labels; includes deleted users, whose history still points at them. */
-  findUserEmails(ids: string[]) {
-    return this.prisma.user.findMany({ where: { id: { in: ids }, ...WITH_DELETED }, select: { id: true, email: true, deletedAt: true } });
+  /** `id` + label column of the given rows, including deleted ones (history still points at them). */
+  findLabels(model: string, ids: readonly string[], labelField: string): Promise<{ id: string; deletedAt: Date | null; [k: string]: unknown }[]> {
+    return this.delegate(model).findMany({
+      where: { id: { in: ids }, ...WITH_DELETED },
+      select: { id: true, deletedAt: true, [labelField]: true },
+    });
   }
 
   findUser(id: string) {

@@ -3,7 +3,8 @@ import { Actor, AuditService } from '../../core/audit/audit.service';
 import { StorageService } from '../../core/storage/storage.service';
 import { coerceWrite, rethrowWriteError } from './admin-coerce';
 import { AdminCrudRepository } from './admin-crud.repository';
-import { ACTOR_FIELDS, AdminMetadataService } from './admin-metadata.service';
+import { AdminLabelsService } from './admin-labels.service';
+import { AdminMetadataService } from './admin-metadata.service';
 import { buildListQuery, ListQuery } from './admin-query';
 import { AdminStatusEffectsService } from './admin-status-effects.service';
 import { ResourceConfig } from './resources';
@@ -21,6 +22,7 @@ export class AdminCrudService {
   constructor(
     private readonly repo: AdminCrudRepository,
     private readonly metadata: AdminMetadataService,
+    private readonly labels: AdminLabelsService,
     private readonly statusEffects: AdminStatusEffectsService,
     private readonly audit: AuditService,
     private readonly storage: StorageService,
@@ -55,7 +57,7 @@ export class AdminCrudService {
       }),
       delegate.count({ where }),
     ]);
-    return { data: await this.withActors(rows.map((r: any) => this.metadata.present(res, r))), total, page, pageSize };
+    return { data: await this.labels.label(res, rows.map((r: any) => this.metadata.present(res, r))), total, page, pageSize };
   }
 
   async get(name: string, id: string) {
@@ -65,7 +67,7 @@ export class AdminCrudService {
       include: this.metadata.include(res),
     });
     if (!row) throw new NotFoundException(`${res.singular} not found`);
-    const [presented] = await this.withActors([this.metadata.present(res, row)]);
+    const [presented] = await this.labels.label(res, [this.metadata.present(res, row)]);
     return presented;
   }
 
@@ -182,19 +184,6 @@ export class AdminCrudService {
 
   // ───────────── helpers ─────────────
 
-  /** Label createdBy / updatedBy with the user's email (in `_relations`, like other relations). */
-  private async withActors(rows: any[]) {
-    // The columns are free text; only uuid-shaped values can be user ids (others are shown as-is).
-    const values = rows.flatMap((r) => ACTOR_FIELDS.map((f) => r[f]).filter(Boolean)) as string[];
-    const ids = [...new Set(values.filter((v) => UUID.test(v)))];
-    if (!ids.length) return rows;
-    const emails = new Map(
-      (await this.repo.findUserEmails(ids)).map((u) => [u.id, u.deletedAt ? `${u.email.split('~deleted~')[0]} (deleted)` : u.email]),
-    );
-    for (const r of rows) for (const f of ACTOR_FIELDS) if (r[f]) r._relations[f] = emails.get(r[f]) ?? null;
-    return rows;
-  }
-
   private raw(res: ResourceConfig, id: string) {
     return this.delegate(res).findUnique({ where: { [this.metadata.idField(res)]: id } });
   }
@@ -234,8 +223,6 @@ export class AdminCrudService {
     }
   }
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const recordLabel = (presented: any): string | null =>
   presented?._label ? String(presented._label).slice(0, 200) : null;

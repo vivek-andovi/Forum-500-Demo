@@ -54,6 +54,8 @@ export type AdminRecord = {
   id: string;
   _label?: string;
   _relations?: Record<string, string | null>;
+  /** Labels for ids inside JSON columns (profile changes, audit before/after): id → name. */
+  _refs?: Record<string, string>;
   [key: string]: unknown;
 };
 

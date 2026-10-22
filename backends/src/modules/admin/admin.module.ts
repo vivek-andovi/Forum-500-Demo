@@ -4,6 +4,7 @@ import { MembershipModule } from '../membership/membership.module';
 import { AdminCrudController } from './admin-crud.controller';
 import { AdminCrudRepository } from './admin-crud.repository';
 import { AdminCrudService } from './admin-crud.service';
+import { AdminLabelsService } from './admin-labels.service';
 import { AdminDashboardRepository } from './admin-dashboard.repository';
 import { AdminMetadataService } from './admin-metadata.service';
 import { AdminStatusEffectsService } from './admin-status-effects.service';
@@ -17,7 +18,7 @@ import { UploadsController } from './uploads.controller';
   imports: [MembershipModule, MediaModule],
   controllers: [AdminCrudController, AdminWorkflowsController, UploadsController],
   providers: [
-    AdminCrudService, AdminMetadataService, AdminStatusEffectsService, AdminCrudRepository,
+    AdminCrudService, AdminMetadataService, AdminLabelsService, AdminStatusEffectsService, AdminCrudRepository,
     AdminWorkflowsService, AdminDashboardRepository,
     AssetsRepository,
   ],

@@ -42,6 +42,18 @@ export function truncate(value: string, max = 80): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
+/** Replace ids anywhere in `value` with their labels from `refs` (e.g. a record's `_refs`). */
+export function withRefLabels<T>(value: T, refs: Record<string, string | null | undefined> | undefined): T {
+  if (!refs) return value;
+  const swap = (v: unknown): unknown => {
+    if (typeof v === "string") return refs[v] ?? v;
+    if (Array.isArray(v)) return v.map(swap);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]));
+    return v;
+  };
+  return swap(value) as T;
+}
+
 export function stringify(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;

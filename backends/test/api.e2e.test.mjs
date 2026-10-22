@@ -158,3 +158,39 @@ describe('audit columns + soft delete', () => {
     assert.ok(!rows((await get(`/admin/r/event-rsvps?filter.eventId=${event.id}`, admin)).data).length);
   });
 });
+
+describe('admin shows names, not ids', () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  test('a comment on an article shows the article title for its target', async () => {
+    const article = rows((await get('/admin/r/articles?pageSize=1', admin)).data)[0];
+    const c = await post('/admin/r/comments', admin, { memberName: 'E2E', body: 'Label test', targetType: 'article', targetId: article.id });
+    assert.equal(c.status, 201);
+    assert.equal(c.data._relations.targetId, article.title);
+  });
+
+  test('no list shows a bare id as a record label or a linked value', async () => {
+    const meta = (await get('/admin/meta', admin)).data;
+    for (const res of meta.resources) {
+      for (const row of rows((await get(`/admin/r/${res.name}?pageSize=20`, admin)).data)) {
+        assert.ok(!UUID.test(row._label ?? ''), `${res.name} label is an id`);
+        for (const f of res.fields.filter((x) => x.type === 'relation')) {
+          if (UUID.test(String(row[f.name] ?? ''))) assert.ok(row._relations?.[f.name], `${res.name}.${f.name} has no label`);
+        }
+      }
+    }
+  });
+});
+
+describe('audit records only the fields that changed', () => {
+  test('re-sending a whole record with one change logs just that field', async () => {
+    const meta = (await get('/admin/meta', admin)).data.resources.find((r) => r.name === 'events');
+    const event = rows((await get('/admin/r/events?pageSize=1', admin)).data)[0];
+    const body = {};
+    for (const f of meta.fields) if (!f.readOnly && !f.hidden && f.name !== 'status' && f.name in event) body[f.name] = event[f.name];
+    body.capacity = (event.capacity ?? 0) + 7;
+    assert.equal((await call('PATCH', `/admin/r/events/${event.id}`, admin, body)).status, 200);
+    const entry = rows((await get(`/admin/r/audit-logs?filter.entityId=${event.id}&pageSize=1`, admin)).data)[0];
+    assert.deepEqual(entry.changes.map((c) => c.field), ['capacity']);
+  });
+});

@@ -91,7 +91,8 @@ const RESOURCES: Record<string, ResourceConfig> = {
     ],
   },
   applications: { icon: UserPlus, Extras: ApplicationActions },
-  "profile-revisions": { icon: FileClock, Extras: RevisionReview },
+  // Decided only via Approve / Reject; the panel shows the whole revision.
+  "profile-revisions": { icon: FileClock, Extras: RevisionReview, hideForm: true },
   "member-interviews": { icon: Mic2 },
   "member-answers": { icon: HelpCircle },
   "benefit-offers": {

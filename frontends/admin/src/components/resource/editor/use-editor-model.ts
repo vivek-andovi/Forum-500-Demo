@@ -39,7 +39,8 @@ export function useEditorModel(resource: ResourceMeta, record: AdminRecord | und
     [resource, isNew],
   );
   const infoFields = useMemo(
-    () => resource.fields.filter((f) => !f.hidden && f.readOnly),
+    // The record's own id means nothing to an admin; everything else that is an id shows a label.
+    () => resource.fields.filter((f) => !f.hidden && f.readOnly && f.name !== "id"),
     [resource],
   );
 

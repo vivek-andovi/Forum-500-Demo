@@ -146,6 +146,7 @@ function EditorForm({
         onStatusChange={(s) => statusMutation.mutate({ id: recordId(record!), status: s })}
         onDelete={() => setConfirmDelete(true)}
         submitting={formState.isSubmitting}
+        canSave={editable.length > 0 && !hideForm}
       />
 
       {extras}

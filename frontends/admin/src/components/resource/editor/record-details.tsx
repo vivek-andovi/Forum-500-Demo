@@ -3,6 +3,7 @@ import { formatDateTime, stringify } from "@/lib/format";
 import { recordHref } from "@/lib/meta";
 import type { AdminRecord, FieldMeta } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReadableValue } from "@/components/common/readable-value";
 import { StatusBadge } from "@/components/common/status-badge";
 
 /** The "Record details" card: read-only fields (id, timestamps, server-set values). */
@@ -48,11 +49,6 @@ function InfoValue({ field, record }: { field: FieldMeta; record: AdminRecord })
   if (field.type === "datetime") return <span>{formatDateTime(v)}</span>;
   if (field.type === "boolean") return <span>{v ? "Yes" : "No"}</span>;
   if (field.type === "enum") return <StatusBadge value={String(v)} />;
-  if (field.type === "json")
-    return (
-      <pre className="max-h-48 overflow-auto rounded bg-background p-2 font-mono text-xs">
-        {JSON.stringify(v, null, 2)}
-      </pre>
-    );
-  return <span className={field.name === "id" ? "font-mono text-xs" : undefined}>{stringify(v)}</span>;
+  if (field.type === "json") return <ReadableValue value={v} refs={record._refs} />;
+  return <span>{stringify(v)}</span>;
 }

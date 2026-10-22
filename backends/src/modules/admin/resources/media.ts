@@ -54,6 +54,7 @@ export const MEDIA_RESOURCES: ResourceConfig[] = [
   {
     name: 'comments', model: 'Comment', label: 'Comments', singular: 'Comment', group: 'Media',
     labelField: 'body',
+    idLabels: { polymorphic: { field: 'targetId', typeField: 'targetType', models: { edition: 'InforumEdition', article: 'Article', feed_post: 'FeedPost' } } },
     listColumns: ['memberName', 'body', 'parentId', 'recommends', 'status', 'createdAt'],
     searchFields: ['body', 'memberName'],
     defaultSort: { field: 'createdAt', order: 'desc' },

@@ -71,12 +71,17 @@ export class ProfileService {
     if (!rev) throw new NotFoundException('Revision not found');
     if (rev.status !== 'pending') throw new BadRequestException('Revision already reviewed');
     const { answers, ...changes } = (rev.changes ?? {}) as Record<string, any>;
+    const previous = (await this.members.findById(rev.memberId)) as Record<string, unknown> | null;
     const result = await this.repo.approveRevision(id, rev.memberId, changes, answers ?? []);
     const member = await this.members.findById(rev.memberId);
+    // Title lists only what actually changed, by label ("Sector", not "sectorId").
+    const before = Object.fromEntries(Object.keys(changes).map((k) => [k, previous?.[k] ?? null]));
+    const changed = this.audit.diff(before, changes).map((c) => c.label);
+    if (answers?.length) changed.push('Five questions');
     await this.audit.log(actor, {
       action: 'approve', entity: 'profile-revisions', entityType: 'Profile Review', entityId: id, entityLabel: member?.fullName,
-      summary: `Approved profile update for “${member?.fullName}” — ${Object.keys(changes).concat(answers?.length ? ['answers'] : []).join(', ')}`,
-      before: {}, after: changes,
+      summary: `Approved profile update for “${member?.fullName}”${changed.length ? ` — ${changed.join(', ')}` : ''}`,
+      before, after: changes,
     });
     return result;
   }
