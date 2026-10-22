@@ -41,4 +41,14 @@ export class PublicationsService {
     if (!article) throw new NotFoundException('Article not found');
     return article;
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  latestArticles(publication: Publication, take: number) {
+    return this.repo.listArticles(publication, take);
+  }
+
+  latestPodcasts(take: number) {
+    return this.repo.listPodcasts(take);
+  }
 }

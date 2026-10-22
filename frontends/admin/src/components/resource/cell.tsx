@@ -32,10 +32,7 @@ export function CellValue({
     );
   }
 
-  if (value === null || value === undefined || value === "") {
-    if (field.type === "boolean") return empty;
-    return empty;
-  }
+  if (value === null || value === undefined || value === "") return empty;
 
   switch (field.type) {
     case "boolean":

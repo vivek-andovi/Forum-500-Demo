@@ -3,29 +3,10 @@
 import Link from "next/link";
 import { ArrowRight, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePublicInforum, usePublicInforumTabs, usePublicPage } from "@/lib/queries";
-import { articleDate, fmtDate, readTime } from "@/lib/format";
-import type { Article } from "@/lib/types";
-
-function Byline({ article }: { article: Article }) {
-  return (
-    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-      {article.authorPhotoUrl ? (
-        <img
-          src={article.authorPhotoUrl}
-          alt={article.authorName}
-          loading="lazy"
-          width={40}
-          height={40}
-          className="h-7 w-7 rounded-full object-cover"
-        />
-      ) : null}
-      <span>
-        {[article.authorName, article.dateline, articleDate(article), readTime(article)].filter(Boolean).join(" · ")}
-      </span>
-    </div>
-  );
-}
+import { usePublicInforum, usePublicInforumTabs } from "@/features/media/queries";
+import { usePublicPage } from "@/features/site/queries";
+import { Byline } from "@/components/media/Byline";
+import { fmtDate } from "@/lib/format";
 
 export function InforumPublic() {
   const q = usePublicInforum();

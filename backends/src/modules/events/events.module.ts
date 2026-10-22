@@ -13,6 +13,6 @@ import { VenuesService } from './venues.service';
 @Module({
   controllers: [EventsController, VenuesController, GalleryController],
   providers: [EventsService, EventsRepository, VenuesService, VenuesRepository, GalleryService, GalleryRepository],
-  exports: [EventsRepository],
+  exports: [EventsService],
 })
 export class EventsModule {}

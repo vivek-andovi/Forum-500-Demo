@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PUBLISHED } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { softDelete } from '../../core/prisma/soft-delete';
 
 @Injectable()
 export class FeedRepository {
@@ -27,8 +28,9 @@ export class FeedRepository {
   toggleLike(postId: string, memberId: string) {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.feedLike.findUnique({ where: { postId_memberId: { postId, memberId } } });
-      if (existing) await tx.feedLike.delete({ where: { id: existing.id } });
-      else await tx.feedLike.create({ data: { postId, memberId } });
+      if (existing) await softDelete(tx, 'FeedLike', { id: existing.id });
+      // upsert, not create: revives a previously removed like (the unique key is still taken)
+      else await tx.feedLike.upsert({ where: { postId_memberId: { postId, memberId } }, update: {}, create: { postId, memberId } });
       const post = await tx.feedPost.update({ where: { id: postId }, data: { likes: { increment: existing ? -1 : 1 } } });
       return { liked: !existing, likes: post.likes };
     });

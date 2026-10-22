@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { MEMBER_PRIVATE } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
+
+const PERSON = { omit: MEMBER_PRIVATE } as const;
+const PERSON_WITH_CHAPTER = { omit: MEMBER_PRIVATE, include: { chapter: true } } as const;
 
 @Injectable()
 export class IntroductionsRepository {
@@ -9,8 +13,8 @@ export class IntroductionsRepository {
     return this.prisma.introduction.findMany({
       where: { OR: [{ targetId: memberId }, { requesterId: memberId }] },
       include: withChapters
-        ? { requester: { include: { chapter: true } }, target: { include: { chapter: true } }, introducer: true }
-        : { requester: true, target: true, introducer: true },
+        ? { requester: PERSON_WITH_CHAPTER, target: PERSON_WITH_CHAPTER, introducer: PERSON }
+        : { requester: PERSON, target: PERSON, introducer: PERSON },
       orderBy: { createdAt: 'desc' },
       take,
     });

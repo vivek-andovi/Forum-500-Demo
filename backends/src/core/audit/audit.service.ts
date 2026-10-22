@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { humanize } from '../common/util';
 import { AuditRepository } from './audit.repository';
 
 export interface Actor {
@@ -24,7 +25,10 @@ export interface AuditEntry {
   summary?: string;
 }
 
-const IGNORED = new Set(['updatedAt', 'createdAt', 'passwordHash', 'tokenVersion', 'failedLogins', 'lockedUntil']);
+const IGNORED = new Set([
+  'updatedAt', 'createdAt', 'createdBy', 'updatedBy', 'deletedAt', 'deletedBy',
+  'passwordHash', 'tokenVersion', 'failedLogins', 'lockedUntil',
+]);
 const SECRET = new Set(['password', 'passwordHash']);
 const VERBS: Record<string, string> = {
   create: 'Created', update: 'Updated', delete: 'Deleted', status: 'Changed status of',
@@ -32,9 +36,6 @@ const VERBS: Record<string, string> = {
   accept: 'Accepted', decline: 'Declined', upload: 'Uploaded', invite: 'Sent invite to',
   revoke_sessions: 'Signed out all sessions of',
 };
-
-const humanize = (f: string) =>
-  f.replace(/Id$/, '').replace(/Url$/, '').replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).trim();
 
 /** Normalise values so dates/arrays compare and display cleanly. */
 function norm(v: unknown): unknown {

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   BadgeCheck,
@@ -14,9 +13,10 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { recordHref } from "@/lib/meta";
+import { useDashboard } from "@/lib/queries";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { usePageTitle } from "@/lib/use-debounce";
+import { usePageTitle } from "@/lib/use-page-title";
 import type { DashboardResponse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,19 +34,16 @@ const KPIS: {
   { key: "members", label: "Members", href: "/r/members", icon: Users },
   { key: "publishedMembers", label: "Published profiles", href: "/r/members?filter.isPublished=true", icon: BadgeCheck },
   { key: "applicationsNew", label: "New applications", href: "/r/applications?status=new", icon: UserPlus },
-  { key: "upcomingEvents", label: "Upcoming events", href: "/r/events", icon: CalendarDays },
-  { key: "rsvps", label: "RSVPs", href: "/r/event-rsvps", icon: Ticket },
-  { key: "benefitOffers", label: "Benefit offers", href: "/r/benefit-offers", icon: Gift },
-  { key: "articles", label: "Articles", href: "/r/articles", icon: FileText },
-  { key: "groups", label: "Groups", href: "/r/groups", icon: UsersRound },
+  { key: "upcomingEvents", label: "Upcoming events", href: "/r/events?status=published", icon: CalendarDays },
+  { key: "rsvps", label: "RSVPs", href: "/r/event-rsvps?status=confirmed", icon: Ticket },
+  { key: "benefitOffers", label: "Benefit offers", href: "/r/benefit-offers?status=published", icon: Gift },
+  { key: "articles", label: "Articles", href: "/r/articles?status=published", icon: FileText },
+  { key: "groups", label: "Groups", href: "/r/groups?status=published", icon: UsersRound },
 ];
 
 export default function DashboardPage() {
   usePageTitle("Dashboard");
-  const q = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => api<DashboardResponse>("/admin/dashboard"),
-  });
+  const q = useDashboard();
 
   if (q.error) {
     return (
@@ -129,7 +126,7 @@ export default function DashboardPage() {
             <ul className="divide-y">
               {(d?.upcomingEvents ?? []).map((e) => (
                 <li key={e.id}>
-                  <Link href={`/r/events/${e.id}`} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/50">
+                  <Link href={recordHref("events", e.id)} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/50">
                     <div className="flex w-12 shrink-0 flex-col items-center rounded-md border bg-background py-1">
                       <span className="text-[10px] font-bold uppercase text-accent">
                         {formatDate(e.startsAt).split(" ")[1] ?? ""}
@@ -166,7 +163,7 @@ export default function DashboardPage() {
             <ul className="divide-y">
               {(d?.recentApplications ?? []).map((a) => (
                 <li key={a.id}>
-                  <Link href={`/r/applications/${a.id}`} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/50">
+                  <Link href={recordHref("applications", a.id)} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/50">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                       {String(a.fullName ?? "?").slice(0, 1)}
                     </div>

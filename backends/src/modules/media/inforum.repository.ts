@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PUBLISHED } from '../../core/common/member-context';
+import { approvalNotification } from '../../core/notifications/notification-data';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { softDelete } from '../../core/prisma/soft-delete';
 
 /** In:Forum: editions, sections, tabs, recommendations, comments and pitches. */
 @Injectable()
@@ -42,7 +44,7 @@ export class InforumRepository {
     return this.prisma.inforumEdition.findFirst({
       where: PUBLISHED,
       orderBy: { publishedOn: 'desc' },
-      include: { articles: { orderBy: { sortOrder: 'asc' }, take, include: { article: { include: { section: true } } } } },
+      include: { articles: { where: { article: PUBLISHED }, orderBy: { sortOrder: 'asc' }, take, include: { article: { include: { section: true } } } } },
     });
   }
 
@@ -90,8 +92,9 @@ export class InforumRepository {
   toggleRecommend(commentId: string, memberId: string) {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.commentRecommend.findUnique({ where: { commentId_memberId: { commentId, memberId } } });
-      if (existing) await tx.commentRecommend.delete({ where: { id: existing.id } });
-      else await tx.commentRecommend.create({ data: { commentId, memberId } });
+      if (existing) await softDelete(tx, 'CommentRecommend', { id: existing.id });
+      // upsert, not create: revives a previously removed recommend (the unique key is still taken)
+      else await tx.commentRecommend.upsert({ where: { commentId_memberId: { commentId, memberId } }, update: {}, create: { commentId, memberId } });
       const comment = await tx.comment.update({ where: { id: commentId }, data: { recommends: { increment: existing ? -1 : 1 } } });
       return { recommended: !existing, recommends: comment.recommends };
     });
@@ -112,7 +115,8 @@ export class InforumRepository {
       const created = await tx.article.create({ data: article });
       const pitch = await tx.pitch.update({ where: { id }, data: { status: 'approved', articleId: created.id } });
       if (notifyMemberId) {
-        await tx.notification.create({ data: { memberId: notifyMemberId, type: 'approval', title: `Your pitch "${headline}" was accepted` } });
+        // Inside the transaction (not NotificationsService) so it commits with the decision.
+        await tx.notification.create({ data: approvalNotification(notifyMemberId, `Your pitch "${headline}" was accepted`) });
       }
       return { pitch, article: created };
     });
@@ -123,7 +127,7 @@ export class InforumRepository {
       const pitch = await tx.pitch.update({ where: { id }, data: { status: 'rejected' } });
       if (pitch.memberId) {
         await tx.notification.create({
-          data: { memberId: pitch.memberId, type: 'approval', title: `Your pitch “${pitch.headline}” was not accepted this time` },
+          data: approvalNotification(pitch.memberId, `Your pitch “${pitch.headline}” was not accepted this time`),
         });
       }
       return pitch;

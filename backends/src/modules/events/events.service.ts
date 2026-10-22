@@ -97,4 +97,18 @@ export class EventsService {
       memberId,
     );
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  upcoming(take: number) {
+    return this.repo.listUpcoming(take);
+  }
+
+  attendingWithHosts(memberId: string) {
+    return this.repo.listAttendingWithHosts(memberId);
+  }
+
+  hostingIncludingReview(memberId: string) {
+    return this.repo.listHostingIncludingReview(memberId);
+  }
 }

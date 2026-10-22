@@ -29,9 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useActions, useCompleteAction } from "@/lib/queries";
+import { useActions, useCompleteAction } from "@/features/comms/queries";
 import { fmtDate, money } from "@/lib/format";
-import type { ActionItem, ActionType } from "@/lib/types";
+import type { ActionItem, ActionType } from "@/features/comms/types";
 
 const typeMeta: Record<ActionType, { label: string; icon: typeof Eye; cta: string }> = {
   review: { label: "Review", icon: Eye, cta: "Review" },

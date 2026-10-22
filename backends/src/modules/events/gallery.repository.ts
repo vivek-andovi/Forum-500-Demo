@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PUBLISHED } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { softDeleteMany } from '../../core/prisma/soft-delete';
 
 @Injectable()
 export class GalleryRepository {
@@ -18,7 +19,9 @@ export class GalleryRepository {
 
   taggedPhotos(memberId: string) {
     return this.prisma.memberPhotoTag.findMany({
-      where: { memberId }, orderBy: { createdAt: 'desc' }, include: { photo: { include: { album: true } } },
+      where: { memberId, photo: { album: PUBLISHED } },
+      orderBy: { createdAt: 'desc' },
+      include: { photo: { include: { album: true } } },
     });
   }
 
@@ -33,6 +36,6 @@ export class GalleryRepository {
   }
 
   untag(memberId: string, photoId: string) {
-    return this.prisma.memberPhotoTag.deleteMany({ where: { memberId, photoId } });
+    return softDeleteMany(this.prisma, 'MemberPhotoTag', { memberId, photoId });
   }
 }

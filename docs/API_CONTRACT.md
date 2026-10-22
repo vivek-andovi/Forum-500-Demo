@@ -57,11 +57,7 @@
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@forum500.club` | `Admin@12345` |
-| Member | `anish@forum500.club` | `Member@12345` |
-
----|---|---|---|
-| Admin | `admin@forum500.club` | `Admin@12345` | |
-| Member | `anish@forum500.club` | `Member@12345` | Linked to member "Anish Malhotra" |
+| Member | `anish@forum500.club` | `Member@12345` (linked to member "Anish Malhotra") |
 
 ---
 
@@ -130,7 +126,11 @@ type FieldMeta = {
 - **`DELETE /admin/r/:resource/:id`**: returns `{ ok: true }`.
 - **`POST /admin/r/:resource/:id/status`**
   - Body: `{ status }`
-  - Returns: the updated record. Works on any resource with `hasStatus`.
+  - Returns: the updated record. Works on any resource with `hasStatus`, except that a resource's
+    `workflowStatuses` (in `/admin/meta`) can't be set or left this way: applications
+    (`approved`, `rejected`, `waitlisted`), profile revisions and pitches (`approved`, `rejected`)
+    are decided with the workflow endpoints below, because those decisions have side effects. → 400.
+    PATCH never changes `status` on those resources.
 - **`GET /admin/options/:resource?search=&ids=a,b`**
   - Returns: `{ id, label }[]` (max 50). Used by relation pickers.
 
@@ -145,8 +145,9 @@ type FieldMeta = {
 - **Applications:**
   - `POST /admin/applications/:id/approve`
     - Body: `{ note? }`
-    - Creates a User (invited, default member password) and a Member.
-    - Returns: `{ application, member }`
+    - Creates a User (status `invited`, no password) and an unpublished Member, then emails a
+      set-password invite link.
+    - Returns: `{ application, member, invite }`. Outside production `invite.devLink` holds the link.
   - `POST /admin/applications/:id/reject`
     - Body: `{ note?, status?: "rejected"|"waitlisted" }`
 - **Profile revisions:**
@@ -186,16 +187,23 @@ type FieldMeta = {
 
 **Visibility rule:** members only ever receive `status = published` content. Their own submissions (proposals, pitches and so on) are returned only by the `mine` endpoints.
 
+**Privacy rule:** other members are returned without `email`, `phone`, `userId` and `profileDraft`
+(`MEMBER_PRIVATE` in `core/common/member-context.ts`). Only `GET /v1/members/:slug` keeps `email`.
+
 ### Me and profile
 - **`GET /v1/me`**
   - Returns: `{ user, member }`
   - `member` includes `chapter`, `sector`, `tier`, `answers` (each with `question`), `groupMemberships` (with `group`), `benefitOffers`, `articles`, `podcastAppearances`.
   - It also returns `pendingRevision: ProfileRevision|null`.
-- **`PATCH /v1/me/profile`** (saves directly, as a draft)
+- **`PATCH /v1/me/profile`** ("Save draft")
+  - Member not yet in the directory (`isPublished = false`): saves directly; nobody else can see it.
+  - Published member: stores the body in `member.profileDraft`; the live profile is unchanged until
+    the member submits and an admin approves. `GET /v1/me` returns the draft so the form can show it.
   - Body fields: `fullName, headline, company, bio, avatarUrl, linkedinUrl, interests: string[], travelCities: string[], joinedYear, chapterId, sectorId`, and `answers: { questionId: string, answer: string }[]`.
 - **`POST /v1/me/profile/submit`**
   - Body: same as PATCH.
-  - Creates a pending ProfileRevision and sets `profileStatus = pending_review`.
+  - Creates a pending ProfileRevision, sets `profileStatus = pending_review` and clears `profileDraft`.
+  - On approval the changes go live; a member's first approval also publishes them (`isPublished = true`).
 - **`GET /v1/lookups`**
   - Returns: `{ sectors: Sector[], chapters: Chapter[] /*isChapter=true*/, allChapters: Chapter[], profileQuestions: ProfileQuestion[], eventKinds: string[], venueCategories: string[], inviteAudiences: string[], supportOptions: string[], pitchFormats: string[], recommendationCategories: {id,label}[] }`
 

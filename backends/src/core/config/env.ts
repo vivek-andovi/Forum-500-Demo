@@ -16,10 +16,10 @@ const EnvSchema = z
     DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(1),
     JWT_EXPIRES_IN: z.string().default('1d'),
-    CORS_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001'),
+    CORS_ORIGINS: z.string().default('http://localhost:3001,http://localhost:3002'),
     PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
     /** Member app URL, used in invite / reset links. */
-    WEB_APP_URL: z.string().url().default('http://localhost:3000'),
+    WEB_APP_URL: z.string().url().default('http://localhost:3002'),
     ADMIN_APP_URL: z.string().url().default('http://localhost:3001'),
     ENABLE_SWAGGER: bool,
     TRUST_PROXY: bool,

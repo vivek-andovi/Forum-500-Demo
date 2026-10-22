@@ -23,6 +23,8 @@ export type FieldMeta = {
   relation?: { resource: string; labelField: string };
   /** Literal database default, applied to new-record forms. */
   default?: unknown;
+  /** Set once on create, read-only afterwards (e.g. Setting.key). */
+  createOnly?: boolean;
 };
 
 export type ResourceMeta = {
@@ -38,6 +40,8 @@ export type ResourceMeta = {
   hasStatus: boolean;
   statusEnum?: string[];
   readOnly?: boolean;
+  /** Statuses only the workflow buttons (approve/reject) can set; the status select hides them. */
+  workflowStatuses?: string[];
   /** Query string applied when opened from the sidebar, e.g. { "filter.parentId": "null" }. */
   defaultQuery?: Record<string, string>;
   fields: FieldMeta[];

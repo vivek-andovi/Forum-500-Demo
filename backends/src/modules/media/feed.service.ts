@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
 import { httpUrl } from '../../core/common/util';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 import { FeedRepository } from './feed.repository';
 
 export const FeedPostSchema = z.object({ body: z.string().trim().min(1).max(2000), imageUrl: httpUrl().optional() });
@@ -12,7 +12,7 @@ export const FeedPostSchema = z.object({ body: z.string().trim().min(1).max(2000
 export class FeedService {
   constructor(
     private readonly repo: FeedRepository,
-    private readonly members: MembersRepository,
+    private readonly members: MembersService,
   ) {}
 
   async list(user: AuthUser) {

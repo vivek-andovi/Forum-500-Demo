@@ -10,30 +10,43 @@ Controller  →  Service  →  Repository  →  PostgreSQL (Prisma)
                  audit, emails)
 ```
 
-**Rule:** only `*.repository.ts` files talk to the database. `npm run check:layers` enforces this, and CI fails if any other file imports `PrismaService`.
+**Rules** (both enforced by `npm run check:layers`, which runs in CI):
+1. Only `*.repository.ts` files talk to the database. Any other file that mentions `PrismaService`, `$queryRaw` or `$transaction` fails the check.
+2. A module never imports another module's repository. Code in `src/modules/<a>/` may not import `src/modules/<b>/*.repository` (where a ≠ b). Each module **exports only its services**. To read another hub's data, inject that hub's service and add a small read method to it if one is missing (a thin pass-through is fine; see `dashboard.service.ts`). Shared needs go in a `core/` service, such as `NotificationsService` or `AuthService`.
 
 ## Folder layout
 ```
 backends/src/
 ├── main.ts, app.module.ts
 ├── core/                         shared infrastructure (no business features)
-│   ├── auth/       login, invite/reset tokens, JWT guard        auth.repository.ts
-│   ├── audit/      human-readable audit log                      audit.repository.ts
-│   ├── storage/    S3 / local file storage, upload sniffing
-│   ├── mail/       SES / console email
-│   ├── health/     /api/health                                   health.repository.ts
-│   ├── config/     env validation (fails fast in production)
-│   ├── common/     zod helpers, URL/password rules, error filter, member-context
-│   └── prisma/     PrismaService (the only DB client)
+│   ├── auth/          login, invite/reset tokens, JWT guard          auth.repository.ts
+│   ├── audit/         human-readable audit log                        audit.repository.ts
+│   ├── notifications/ in-app notifications (NotificationsService)     notifications.repository.ts
+│   ├── storage/       S3 / local file storage, upload sniffing
+│   ├── mail/          SES / console email
+│   ├── health/        HealthModule: /api/health                       health.repository.ts
+│   ├── config/        env validation (fails fast in production)
+│   ├── common/        util.ts (zod helpers, URL/password rules, slugify/uniqueSlug, humanize),
+│   │                  all-exceptions.filter.ts, member-context.ts
+│   └── prisma/        PrismaService (the only DB client)
 └── modules/
     ├── membership/ Member Directory, My Profile, Apply, Benefits, Groups
     ├── events/     Events Calendar & RSVP, My Events, Venues, Gallery
     ├── media/      In:Forum, Forecast, Podcasts/Radio, Books & Reading, Library, Articles, Newsfeed
     ├── comms/      Introductions, WhatsApp groups & chat, Messages (DMs), Emails, Notifications, Actions, Ask Zola
     ├── site/       CMS: pages, navigation menus, cards, club benefits, settings, lookups
-    ├── dashboard/  member dashboard (reads through the other modules)
+    ├── dashboard/  member dashboard (reads through the other modules' services)
     └── admin/      generic admin CRUD for every table, approvals, workflows, uploads
+        ├── admin-crud.service.ts           orchestrates list/get/options/create/update/remove/setStatus
+        ├── admin-metadata.service.ts       DMMF → field metadata (/admin/meta), includes, row presentation
+        ├── admin-query.ts                  list filter/sort/paging (pure)
+        ├── admin-coerce.ts                 form body → validated Prisma data; Prisma error mapping
+        ├── admin-status-effects.service.ts notify the member after an admin status change
+        ├── admin-workflows.*               decisions with side effects (applications, profile reviews, pitches)
+        └── resources/                      the admin resource registry (see "Adding an admin resource")
 ```
+
+**Notifications.** Create in-app notifications with `NotificationsService` (global module). The one exception is a notification that must commit together with a decision inside a repository's Prisma transaction (profile review, pitch accept/decline). That repository writes it with `tx.notification.create({ data: approvalNotification(...) })` so the transaction stays atomic. `core/notifications/notification-data.ts` defines the notification shape once for both paths.
 
 ## Module → page → endpoint map
 
@@ -58,16 +71,50 @@ backends/src/
 | | `/ask-zola` | `concierge.*` | `GET/POST /v1/concierge`, `GET /v1/concierge/prompts` |
 | site | layout, `/`, `/about`, page headers, club rules | `site.*` | `GET /public/site`, `/public/pages/:slug`, `GET /v1/site`, `/v1/pages/:slug`, `/v1/lookups` |
 | dashboard | `/dashboard` | `dashboard.*` | `GET /v1/dashboard` |
-| admin | admin portal | `admin-crud.*`, `admin-workflows.*`, `admin-dashboard.repository`, `uploads.controller`, `assets.repository` | `/admin/meta`, `/admin/r/:resource[...]`, `/admin/options/:resource`, `/admin/dashboard`, `/admin/approvals`, application/profile/pitch decisions, user invite/revoke, uploads |
+| admin | admin portal | `admin-crud.*` (+ `admin-metadata`, `admin-query`, `admin-coerce`, `admin-status-effects`, `resources/`), `admin-workflows.*`, `admin-dashboard.repository`, `uploads.controller`, `assets.repository` | `/admin/meta`, `/admin/r/:resource[...]`, `/admin/options/:resource`, `/admin/dashboard`, `/admin/approvals`, application/profile/pitch decisions, user invite/revoke, uploads |
+
+## Audit columns and soft delete
+
+Every table has `id`, `createdAt`, `updatedAt`, `deletedAt`, `createdBy`, `updatedBy`, `deletedBy`
+(the `*By` columns are free text: the app writes the acting User's id, scripts and imports may
+write any label such as `"import"`; null = system, seed or a public form). Nothing here
+is done by hand in repositories:
+
+- `core/common/request-context.ts` keeps the signed-in user for the request (set by the auth guard,
+  and by login / set-password on their public routes).
+- `core/prisma/audit-trail.extension.ts` (applied in `PrismaService`) stamps `createdBy`/`updatedBy`
+  on every write, nested writes included, and adds `deletedAt: null` to every read: top-level
+  `where`, to-many `include`/`select`, `_count`, and `some`/`every`/`none` filters. `upsert` revives
+  a soft-deleted row holding the same unique key. Hard `delete`/`deleteMany` throw.
+- To delete, call `softDelete(db, 'Model', uniqueWhere)` or `softDeleteMany(db, 'Model', where)`
+  from `core/prisma/soft-delete.ts` (`db` = `this.prisma` or a `$transaction` client). It applies each
+  relation's `onDelete` like Postgres would (Cascade → soft-delete children, SetNull → clear the FK,
+  Restrict → P2003) and frees single-column unique values (`slug~deleted~<time>`), so names, slugs
+  and emails can be reused.
+- For a toggle on a table with a compound unique key (likes, opt-ins), re-create with `upsert`,
+  not `create`: the soft-deleted row still holds the key.
+- To read deleted rows on purpose, put `deletedAt` in the top-level `where` (e.g. `...WITH_DELETED`).
+- Raw SQL (`$queryRaw`) bypasses all of this; add `"deletedAt" IS NULL` yourself.
 
 ## Adding a feature (checklist)
 1. **Schema:** add the model to `prisma/schema.prisma`, then run `npx prisma migrate dev --name <change>`.
-2. **Repository** (`<feature>.repository.ts`): all queries for the feature. Use `PUBLISHED` for member-facing reads, and omit private fields.
-3. **Service** (`<feature>.service.ts`): validation schemas (zod), permission checks (`requireMember`), workflows, audit and notifications.
+2. **Repository** (`<feature>.repository.ts`): all queries for the feature. Use `PUBLISHED` for member-facing reads, and omit private fields (`MEMBER_PRIVATE`).
+3. **Service** (`<feature>.service.ts`): validation schemas (zod), permission checks (`requireMember`), workflows, audit and notifications (`NotificationsService`). For another hub's data, inject that hub's **service**, never its repository.
 4. **Controller** (`<feature>.controller.ts`): routes only. Parse the body with `parseBody(schema, body)` and use `ParseUUIDPipe` for ids.
-5. **Module:** register the controller, service and repository in the module.
-6. **Admin:** add a line to `modules/admin/resources.ts`, and the table appears in the admin portal with list, create, edit, delete and status.
-7. **Verify:** `npm run check:types && npm run check:layers`.
+5. **Module:** register the controller, service and repository. Put only services in `exports`.
+6. **Admin:** add an entry to `modules/admin/resources/` (see below).
+7. **Verify:** `npm run check:types && npm run check:layers && npm run build`.
+
+## Adding an admin resource
+`modules/admin/resources/` is the registry behind `/admin/meta` and `/admin/r/:resource`:
+- `types.ts`: the `ResourceConfig` shape.
+- One file per admin sidebar group: `membership.ts`, `events.ts`, `media.ts`, `communications.ts`, `website.ts`, `configuration.ts`, `system.ts`.
+- `field-hints.ts`: `TEXT_FIELDS` (rendered as textareas) and `LINK_FIELDS` (URLs that are not images).
+- `index.ts`: concatenates the groups into `RESOURCES`.
+
+To add one, append an entry to the right group file. Entries appear in the sidebar in array order, and groups appear in the order `index.ts` lists them, so don't reorder existing entries. Field types, enums and relations come from the Prisma schema. The entry only adds presentation hints (`labelField`, `listColumns`, `searchFields`, `defaultSort`, `labels`, `hidden`, `readOnlyFields`, `defaultQuery`, `readOnly`, `noCreate`).
+
+If an admin decision on the resource has side effects, such as creating a record, applying changes or emailing someone, list those statuses in **`workflowStatuses`** and implement the decision in `admin-workflows`. With that set, the generic `POST …/status` refuses to move a record into or out of those statuses, PATCH never changes `status`, and `/admin/meta` exposes the list so the UI shows decision buttons. For a plain "tell the member" effect, add a `case` to `admin-status-effects.service.ts` instead.
 
 ## Where the content lives (nothing hard-coded in the frontends)
 | Content | Table | Admin section |

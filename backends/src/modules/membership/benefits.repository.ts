@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PUBLISHED } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { softDeleteMany } from '../../core/prisma/soft-delete';
 
 @Injectable()
 export class BenefitsRepository {
@@ -41,7 +42,7 @@ export class BenefitsRepository {
   }
 
   optOut(memberId: string, offerId: string) {
-    return this.prisma.benefitOptIn.deleteMany({ where: { memberId, offerId } });
+    return softDeleteMany(this.prisma, 'BenefitOptIn', { memberId, offerId });
   }
 
   findCategoryByName(name: string) {

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthTokenType, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
+import { requestContext } from '../common/request-context';
 import { env } from '../config/env';
 import { MailService } from '../mail/mail.service';
 import { AuthRepository } from './auth.repository';
@@ -43,8 +44,6 @@ export class AuthService {
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new UnauthorizedException(`Too many failed attempts. Try again after ${user.lockedUntil.toISOString().slice(11, 16)} UTC.`);
     }
-    if (user.status === 'suspended') throw new UnauthorizedException('This account is suspended');
-
     if (!(await argon2.verify(user.passwordHash, password))) {
       const failed = user.failedLogins + 1;
       await this.users.updateUser(user.id, {
@@ -53,7 +52,10 @@ export class AuthService {
       });
       throw fail;
     }
+    // Checked only after the password is verified, so it doesn't reveal which emails are suspended.
+    if (user.status === 'suspended') throw new UnauthorizedException('This account is suspended');
 
+    requestContext.setUser(user.id); // public route: the user is the actor from here on
     const updated = await this.users.updateUserWithMember(user.id, {
       lastLoginAt: new Date(), status: 'active', failedLogins: 0, lockedUntil: null,
     });
@@ -100,8 +102,11 @@ export class AuthService {
     if (!token || token.usedAt || token.expiresAt < new Date()) {
       throw new BadRequestException('This link is invalid or has expired. Please request a new one.');
     }
+    // Check before consuming: consuming the token marks the user active, which would undo a suspension.
+    const owner = await this.users.findById(token.userId);
+    if (!owner || owner.status === 'suspended') throw new UnauthorizedException('This account is suspended');
+    requestContext.setUser(owner.id);
     const user = await this.users.consumeTokenAndSetPassword(token.id, token.userId, await argon2.hash(password));
-    if (user.status === 'suspended') throw new UnauthorizedException('This account is suspended');
     return this.session(user, await this.issue(user));
   }
 
@@ -115,6 +120,11 @@ export class AuthService {
     });
     // Other sessions are signed out; this one gets a fresh token.
     return { accessToken: await this.issue(updated) };
+  }
+
+  /** Raw user row (used by admin user actions). */
+  findUserById(id: string) {
+    return this.users.findById(id);
   }
 
   async revokeSessions(userId: string) {

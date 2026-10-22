@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PUBLISHED } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { softDeleteMany } from '../../core/prisma/soft-delete';
 
 const MEMBER_COUNT = { _count: { select: { memberships: { where: { status: 'approved' as const } } } } };
 
@@ -45,7 +46,7 @@ export class GroupsRepository {
   }
 
   leave(groupId: string, memberId: string) {
-    return this.prisma.groupMembership.deleteMany({ where: { groupId, memberId } });
+    return softDeleteMany(this.prisma, 'GroupMembership', { groupId, memberId });
   }
 
   createProposal(data: Prisma.GroupUncheckedCreateInput, proposerId: string) {

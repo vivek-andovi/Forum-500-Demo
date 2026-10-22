@@ -2,11 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queries";
 import type { Meta, ResourceMeta } from "@/lib/types";
 
 export function useMeta() {
   return useQuery({
-    queryKey: ["admin-meta"],
+    queryKey: queryKeys.meta(),
     queryFn: () => api<Meta>("/admin/meta"),
     staleTime: 5 * 60 * 1000,
   });
@@ -27,7 +28,7 @@ export function useResourceMeta(name: string): {
   };
 }
 
-export const GROUP_ORDER = [
+const GROUP_ORDER = [
   "Membership",
   "Events",
   "Media",
@@ -59,4 +60,14 @@ export function resourceHref(resource: string, filter?: Record<string, string>) 
   }
   const s = sp.toString();
   return `/r/${resource}${s ? `?${s}` : ""}`;
+}
+
+/** Link to one record's editor. Always use this: ids (e.g. Setting keys) may need encoding. */
+export function recordHref(resource: string, id: string) {
+  return `/r/${resource}/${encodeURIComponent(id)}`;
+}
+
+/** True when moving into or out of this status must go through a workflow button (approve/reject). */
+export function isWorkflowStatus(resource: ResourceMeta, status: string | undefined) {
+  return !!status && !!resource.workflowStatuses?.includes(status);
 }

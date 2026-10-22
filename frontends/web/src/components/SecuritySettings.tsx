@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api, errorMessage, setToken } from "@/lib/api";
-import { inputClass, passwordProblems } from "@/components/AuthCard";
+import { useSignOut } from "@/hooks/useAuth";
+import { FormField } from "@/components/form";
+import { passwordProblems } from "@/features/auth/password";
 import { Button } from "@/components/ui/button";
 
 /** Change password + sign out of every device. */
 export function SecuritySettings() {
-  const router = useRouter();
+  const signOut = useSignOut();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [busy, setBusy] = useState<"pw" | "out" | null>(null);
@@ -42,8 +43,7 @@ export function SecuritySettings() {
     } catch {
       /* token is cleared either way */
     }
-    setToken(null);
-    router.replace("/auth");
+    signOut("/auth");
   }
 
   return (
@@ -53,19 +53,14 @@ export function SecuritySettings() {
         <p className="mt-1 text-sm text-muted-foreground">Change your password or sign out of every device.</p>
       </div>
       <form onSubmit={changePassword} className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="text-sm font-medium" htmlFor="current-password">Current password</label>
-          <input id="current-password" type="password" autoComplete="current-password" required value={current}
-            onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="new-password">New password</label>
-          <input id="new-password" type="password" autoComplete="new-password" required value={next}
-            onChange={(e) => setNext(e.target.value)} className={inputClass} />
+        <FormField label="Current password" id="current-password" type="password" autoComplete="current-password"
+          required value={current} onChange={(e) => setCurrent(e.target.value)} />
+        <FormField label="New password" id="new-password" type="password" autoComplete="new-password" required
+          value={next} onChange={(e) => setNext(e.target.value)}>
           <p className={`mt-1.5 text-xs ${next && problems.length ? "text-destructive" : "text-muted-foreground"}`}>
             10+ characters with a letter and a number.
           </p>
-        </div>
+        </FormField>
         <div className="sm:col-span-2">
           <Button type="submit" disabled={busy !== null}>{busy === "pw" ? "Updating…" : "Update password"}</Button>
         </div>

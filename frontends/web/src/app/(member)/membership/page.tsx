@@ -6,7 +6,8 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from "lucid
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
-import { useLookups, useMembers, useNewMembers } from "@/lib/queries";
+import { useMembers, useNewMembers } from "@/features/membership/queries";
+import { useLookups } from "@/features/site/queries";
 
 function useDebounced<T>(value: T, ms = 300): T {
   const [v, setV] = useState(value);

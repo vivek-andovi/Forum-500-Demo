@@ -5,7 +5,7 @@ import { Actor, AuditService } from '../../core/audit/audit.service';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
 import { uniqueSlug } from '../../core/common/util';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 import { InforumRepository } from './inforum.repository';
 
 export const CommentSchema = z.object({ body: z.string().trim().min(1).max(400), parentId: z.string().uuid().optional() });
@@ -37,7 +37,7 @@ const DEFAULT_FIXED_TABS = [
 export class InforumService {
   constructor(
     private readonly repo: InforumRepository,
-    private readonly members: MembersRepository,
+    private readonly members: MembersService,
     private readonly audit: AuditService,
   ) {}
 
@@ -61,7 +61,7 @@ export class InforumService {
 
   async latestArticles(take: number) {
     const edition = await this.repo.findLatestEditionArticles(take);
-    return (edition?.articles ?? []).map((ea) => ea.article).filter((a) => a.status === 'published');
+    return (edition?.articles ?? []).map((ea) => ea.article);
   }
 
   sections() {

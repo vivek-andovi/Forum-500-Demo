@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemberSite } from "@/lib/queries";
+import { useMemberSite } from "@/features/site/queries";
 
 /**
  * Member page header. Pass `pageKey` (the route path without the leading slash,

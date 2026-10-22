@@ -5,7 +5,8 @@ import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EventsCalendar } from "@/components/EventsCalendar";
 import { QueryState } from "@/components/QueryState";
-import { useEvents, useSiteSettings } from "@/lib/queries";
+import { useEvents } from "@/features/events/queries";
+import { useSiteSettings } from "@/features/site/queries";
 import { eventDate, eventTime, eventVenue } from "@/lib/format";
 
 export default function EventsCalendarPage() {

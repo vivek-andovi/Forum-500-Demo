@@ -16,6 +16,7 @@
     "check:types": "tsc --noEmit",
     "postinstall": "prisma generate",
     "check:layers": "node scripts/check-layers.mjs",
+    "test:e2e": "node --test test/*.test.mjs",
     "admin:create": "node scripts/create-admin.mjs"
   },
   "prisma": {
@@ -30,17 +31,17 @@
     "@nestjs/core": "^11.2.7",
     "@nestjs/jwt": "11.0.2",
     "@nestjs/platform-express": "^11.2.7",
-    "@nestjs/serve-static": "5.0.5",
     "@nestjs/swagger": "^11.4.7",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "6.19.3",
     "argon2": "^0.44.0",
+    "dotenv": "^18.0.8",
     "helmet": "^8.1.0",
+    "prisma": "6.19.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tsx": "^4.20.3",
-    "zod": "^3.25.76",
-    "dotenv": "^18.0.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.10",
@@ -48,7 +49,6 @@
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.16.5",
-    "prisma": "6.19.3",
     "typescript": "^5.8.3"
   },
   "overrides": {

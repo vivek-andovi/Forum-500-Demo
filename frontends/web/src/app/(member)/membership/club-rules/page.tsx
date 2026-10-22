@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { usePage } from "@/lib/queries";
+import { usePage } from "@/features/site/queries";
 import { paragraphs as toParagraphs } from "@/lib/format";
 
 export default function ClubRulesPage() {

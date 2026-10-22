@@ -1,5 +1,5 @@
 import { parseISO } from "date-fns";
-import type { ForumEvent } from "./types";
+import type { ForumEvent } from "@/features/events/types";
 import { eventVenue } from "./format";
 
 export function eventStart(e: Pick<ForumEvent, "startsAt">): Date | null {

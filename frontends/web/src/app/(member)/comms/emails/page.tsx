@@ -5,9 +5,9 @@ import { Mail } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useEmails } from "@/lib/queries";
+import { useEmails } from "@/features/comms/queries";
 import { fmtDate, timeAgo } from "@/lib/format";
-import type { EmailCampaign } from "@/lib/types";
+import type { EmailCampaign } from "@/features/comms/types";
 
 export default function EmailsPage() {
   const { data: emails = [], isLoading, error } = useEmails();

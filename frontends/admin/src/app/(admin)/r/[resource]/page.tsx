@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { usePageTitle } from "@/lib/use-debounce";
+import { usePageTitle } from "@/lib/use-page-title";
 import { useResourceMeta } from "@/lib/meta";
 import { PageHeader } from "@/components/common/page-header";
 import { ResourceGate } from "@/components/resource/resource-gate";

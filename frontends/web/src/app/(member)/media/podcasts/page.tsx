@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
 import { paragraphs } from "@/lib/format";
-import { usePodcasts, usePageCopy } from "@/lib/queries";
-import type { PodcastEpisode } from "@/lib/types";
+import { usePodcasts } from "@/features/media/queries";
+import { usePageCopy } from "@/features/site/queries";
+import type { PodcastEpisode } from "@/features/media/types";
 
 export default function PodcastsPage() {
   const copy = usePageCopy("media/podcasts");

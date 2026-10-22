@@ -4,7 +4,8 @@ import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useLookups, useVenues } from "@/lib/queries";
+import { useVenues } from "@/features/events/queries";
+import { useLookups } from "@/features/site/queries";
 
 const categoryLabel = (c: string) => c.replace(/_/g, " ");
 

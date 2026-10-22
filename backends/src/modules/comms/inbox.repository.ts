@@ -16,10 +16,6 @@ export class InboxRepository {
     });
   }
 
-  listSentCampaigns(take: number) {
-    return this.prisma.emailCampaign.findMany({ where: { status: 'sent' }, orderBy: { sentAt: 'desc' }, take });
-  }
-
   listNotifications(memberId: string) {
     return this.prisma.notification.findMany({
       where: { OR: [{ memberId }, { memberId: null }] }, orderBy: { createdAt: 'desc' }, take: 100,

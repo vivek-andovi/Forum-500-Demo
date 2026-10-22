@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
+import { requestContext } from '../common/request-context';
 import { AuthRepository } from './auth.repository';
 import { AuthUser, IS_PUBLIC, ROLES } from './decorators';
 
@@ -49,6 +50,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Session is no longer valid. Please sign in again.');
     }
     req.user = { id: user.id, email: user.email, role: user.role, memberId: user.member?.id ?? null } satisfies AuthUser;
+    requestContext.setUser(user.id);
 
     const roles = this.reflector.getAllAndOverride<UserRole[]>(ROLES, targets);
     if (roles?.length && !roles.includes(user.role)) {

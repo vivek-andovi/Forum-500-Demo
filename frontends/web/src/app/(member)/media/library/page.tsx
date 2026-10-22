@@ -3,8 +3,9 @@
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useLibrary, useSiteSettings } from "@/lib/queries";
-import type { LibraryKind } from "@/lib/types";
+import { useLibrary } from "@/features/media/queries";
+import { useSiteSettings } from "@/features/site/queries";
+import type { LibraryKind } from "@/features/media/types";
 
 const kindLabel: Record<LibraryKind, string> = {
   Annual_Report: "Annual Report",

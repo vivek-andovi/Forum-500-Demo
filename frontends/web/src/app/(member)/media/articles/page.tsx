@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useArticles } from "@/lib/queries";
+import { useArticles } from "@/features/media/queries";
 import { readTime } from "@/lib/format";
 
 export default function MemberArticlesPage() {

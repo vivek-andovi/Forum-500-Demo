@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { z } from 'zod';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 import { IntroductionsRepository } from './introductions.repository';
 
 export const IntroSchema = z.object({ targetMemberId: z.string().uuid(), reason: z.string().min(1).max(1000) });
@@ -12,7 +12,7 @@ export const RespondSchema = z.object({ accept: z.boolean() });
 export class IntroductionsService {
   constructor(
     private readonly repo: IntroductionsRepository,
-    private readonly members: MembersRepository,
+    private readonly members: MembersService,
   ) {}
 
   list(user: AuthUser) {
@@ -36,5 +36,12 @@ export class IntroductionsService {
     if (intro.targetId !== memberId) throw new ForbiddenException('Only the introduced member can respond');
     if (!['requested', 'pending'].includes(intro.status)) throw new BadRequestException('This introduction was already answered');
     return this.repo.respond(id, accept);
+  }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  /** Latest introductions without chapter details (dashboard teaser). */
+  recentFor(memberId: string, take: number) {
+    return this.repo.listFor(memberId, take, false);
   }
 }

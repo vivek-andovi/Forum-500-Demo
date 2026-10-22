@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { Actor, AuditService } from '../../core/audit/audit.service';
 import { AuthUser } from '../../core/auth/decorators';
@@ -40,14 +41,26 @@ export class ProfileService {
     return { user: { id: user.id, email: user.email, role: user.role }, member, pendingRevision };
   }
 
+  /**
+   * "Save draft". A member who is not in the directory yet (new, never approved) edits their
+   * profile directly — nobody else can see it. A published member's edits are parked in
+   * `profileDraft` and only go live through submitForReview + admin approval.
+   */
   async saveDraft(user: AuthUser, input: ProfileInput) {
-    const { answers, ...data } = input;
-    await this.repo.updateProfile(requireMember(user), data, answers);
+    const memberId = requireMember(user);
+    const member = await this.members.findById(memberId);
+    if (!member) throw new NotFoundException('Member profile not found');
+    if (member.isPublished) {
+      await this.repo.saveDraft(memberId, input as Prisma.InputJsonValue);
+    } else {
+      const { answers, ...data } = input;
+      await this.repo.updateProfile(memberId, data, answers);
+    }
     return this.me(user);
   }
 
   async submitForReview(user: AuthUser, input: ProfileInput) {
-    await this.repo.submitRevision(requireMember(user), input as any);
+    await this.repo.submitRevision(requireMember(user), input as Prisma.InputJsonValue);
     return this.me(user);
   }
 

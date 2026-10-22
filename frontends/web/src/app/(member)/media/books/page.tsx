@@ -3,7 +3,7 @@
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useBooks } from "@/lib/queries";
+import { useBooks } from "@/features/media/queries";
 
 function Cover({ src, title }: { src: string | null | undefined; title: string }) {
   return (

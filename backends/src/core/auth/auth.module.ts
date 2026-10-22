@@ -18,6 +18,8 @@ import { AuthService } from './auth.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, AuthRepository],
+  // AuthRepository is exported only for AuthGuard, which AppModule registers as the global APP_GUARD.
+  // Feature modules should use AuthService.
   exports: [AuthService, AuthRepository, JwtModule],
 })
 export class AuthModule {}

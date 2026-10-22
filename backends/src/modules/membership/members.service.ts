@@ -19,4 +19,19 @@ export class MembersService {
     if (!member) throw new NotFoundException('Member not found');
     return member;
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  findById(id: string) {
+    return this.repo.findById(id);
+  }
+
+  findPublishedById(id: string) {
+    return this.repo.findPublishedById(id);
+  }
+
+  /** Author details (name, photo, chapter) used when a member posts content. */
+  findAuthor(id: string) {
+    return this.repo.findAuthor(id);
+  }
 }

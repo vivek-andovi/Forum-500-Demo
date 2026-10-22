@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, ExternalLink, Loader2, X } from "lucide-react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { recordHref } from "@/lib/meta";
+import { useOptionLabels, useOptions } from "@/lib/queries";
 import { useDebounce } from "@/lib/use-debounce";
 import { cn } from "@/lib/utils";
 import type { OptionItem } from "@/lib/types";
@@ -18,7 +18,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { useOptionLabels } from "@/components/resource/hooks";
 
 export function RelationSelect({
   resource,
@@ -44,12 +43,7 @@ export function RelationSelect({
   const debounced = useDebounce(search, 250);
   const [picked, setPicked] = useState<OptionItem | null>(null);
 
-  const options = useQuery({
-    queryKey: ["options", resource, debounced],
-    queryFn: () => api<OptionItem[]>(`/admin/options/${resource}`, { query: { search: debounced } }),
-    enabled: open,
-    staleTime: 30_000,
-  });
+  const options = useOptions(resource, debounced, open);
 
   const knownLabel =
     (picked?.id === value ? picked.label : undefined) ??
@@ -129,7 +123,7 @@ export function RelationSelect({
       )}
       {value && (
         <Button asChild type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Open record">
-          <Link href={`/r/${resource}/${value}`} target="_blank">
+          <Link href={recordHref(resource, value)} target="_blank">
             <ExternalLink />
           </Link>
         </Button>

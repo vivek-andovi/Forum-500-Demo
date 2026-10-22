@@ -1,30 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { AuthUser } from '../../core/auth/decorators';
-import { ActionsRepository } from '../comms/actions.repository';
-import { InboxRepository } from '../comms/inbox.repository';
-import { IntroductionsRepository } from '../comms/introductions.repository';
-import { WhatsappRepository } from '../comms/whatsapp.repository';
-import { EventsRepository } from '../events/events.repository';
+import { ActionsService } from '../comms/actions.service';
+import { InboxService } from '../comms/inbox.service';
+import { IntroductionsService } from '../comms/introductions.service';
+import { WhatsappService } from '../comms/whatsapp.service';
+import { EventsService } from '../events/events.service';
 import { InforumService } from '../media/inforum.service';
-import { PublicationsRepository } from '../media/publications.repository';
-import { BenefitsRepository } from '../membership/benefits.repository';
+import { PublicationsService } from '../media/publications.service';
+import { BenefitsService } from '../membership/benefits.service';
 import { GroupsService } from '../membership/groups.service';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 
-/** Member dashboard: composes data from every hub (each via its own repository/service). */
+/** Member dashboard: composes data from every hub, always through that hub's exported services. */
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly members: MembersRepository,
-    private readonly events: EventsRepository,
-    private readonly benefits: BenefitsRepository,
+    private readonly members: MembersService,
+    private readonly events: EventsService,
+    private readonly benefits: BenefitsService,
     private readonly groups: GroupsService,
-    private readonly publications: PublicationsRepository,
+    private readonly publications: PublicationsService,
     private readonly inforum: InforumService,
-    private readonly whatsapp: WhatsappRepository,
-    private readonly intros: IntroductionsRepository,
-    private readonly actions: ActionsRepository,
-    private readonly inbox: InboxRepository,
+    private readonly whatsapp: WhatsappService,
+    private readonly intros: IntroductionsService,
+    private readonly actions: ActionsService,
+    private readonly inbox: InboxService,
   ) {}
 
   async forMember(user: AuthUser) {
@@ -34,20 +34,20 @@ export class DashboardService {
       memberArticles, podcasts, inforumArticles, whatsappGroups, introductions, actions, emails,
     ] = await Promise.all([
       memberId ? this.members.findById(memberId) : null,
-      this.events.listUpcoming(6),
-      memberId ? this.events.listAttendingWithHosts(memberId) : [],
-      memberId ? this.events.listHostingIncludingReview(memberId) : [],
-      this.members.listFeaturedNew(),
-      this.benefits.listFeatured(),
-      memberId ? this.benefits.listOptedIn(memberId) : [],
+      this.events.upcoming(6),
+      memberId ? this.events.attendingWithHosts(memberId) : [],
+      memberId ? this.events.hostingIncludingReview(memberId) : [],
+      this.members.newMembers(),
+      this.benefits.featured(),
+      memberId ? this.benefits.optedIn(memberId) : [],
       memberId ? this.groups.joined(memberId) : [],
-      this.publications.listArticles('member', 6),
-      this.publications.listPodcasts(6),
+      this.publications.latestArticles('member', 6),
+      this.publications.latestPodcasts(6),
       this.inforum.latestArticles(6),
-      memberId ? this.whatsapp.listJoinedGroups(memberId) : [],
-      memberId ? this.intros.listFor(memberId, 5, false) : [],
-      this.actions.listPendingForDashboard(memberId),
-      this.inbox.listSentCampaigns(5),
+      memberId ? this.whatsapp.joinedGroups(memberId) : [],
+      memberId ? this.intros.recentFor(memberId, 5) : [],
+      this.actions.pendingForDashboard(memberId),
+      memberId ? this.inbox.recentEmails(memberId, 5) : [],
     ]);
     return {
       member, upcomingEvents, attending, hosting, newMembers, featuredOffers, myOffers, myGroups,

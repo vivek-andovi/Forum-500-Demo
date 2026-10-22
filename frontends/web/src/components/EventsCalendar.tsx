@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ForumEvent } from "@/lib/types";
+import type { ForumEvent } from "@/features/events/types";
 import { eventStart } from "@/lib/event-calendar";
 
 export function EventsCalendar({

@@ -4,34 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle, MapPin, User, Users, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePublicPage, useSubmitApplication } from "@/lib/queries";
+import { useSubmitApplication } from "@/features/membership/queries";
+import { usePublicPage } from "@/features/site/queries";
 import { toList } from "@/lib/format";
-
-const inputClass =
-  "mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring";
-
-function Field({
-  label,
-  id,
-  required,
-  optional,
-  ...props
-}: {
-  label: string;
-  id: string;
-  required?: boolean;
-  optional?: boolean;
-} & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <label className="text-sm font-medium" htmlFor={id}>
-        {label}
-        {optional && <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>}
-      </label>
-      <input id={id} required={required} className={inputClass} {...props} />
-    </div>
-  );
-}
+import { FormField, inputClass } from "@/components/form";
 
 function SectionHeading({ icon: Icon, title, hint }: { icon: typeof User; title: string; hint?: string }) {
   return (
@@ -141,10 +117,10 @@ export default function ApplyPage() {
               <section className="space-y-4">
                 <SectionHeading icon={User} title="Personal details" />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Full name" id="fullName" required value={form.fullName} onChange={set("fullName")} />
-                  <Field label="Email" id="email" type="email" required value={form.email} onChange={set("email")} />
-                  <Field label="Phone" id="phone" type="tel" optional value={form.phone} onChange={set("phone")} />
-                  <Field
+                  <FormField label="Full name" id="fullName" required value={form.fullName} onChange={set("fullName")} />
+                  <FormField label="Email" id="email" type="email" required value={form.email} onChange={set("email")} />
+                  <FormField label="Phone" id="phone" type="tel" optional value={form.phone} onChange={set("phone")} />
+                  <FormField
                     label="LinkedIn profile"
                     id="linkedin"
                     type="url"
@@ -153,7 +129,7 @@ export default function ApplyPage() {
                     value={form.linkedin}
                     onChange={set("linkedin")}
                   />
-                  <Field
+                  <FormField
                     label="Role / title"
                     id="role"
                     required
@@ -161,14 +137,14 @@ export default function ApplyPage() {
                     value={form.role}
                     onChange={set("role")}
                   />
-                  <Field
+                  <FormField
                     label="Company / organisation"
                     id="company"
                     required
                     value={form.company}
                     onChange={set("company")}
                   />
-                  <Field
+                  <FormField
                     label="Sector"
                     id="sector"
                     required
@@ -187,10 +163,10 @@ export default function ApplyPage() {
                   hint="Forum chapters meet across 49 cities — tell us where you&apos;re based."
                 />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Primary city" id="city" required value={form.city} onChange={set("city")} />
-                  <Field label="Country" id="country" required value={form.country} onChange={set("country")} />
+                  <FormField label="Primary city" id="city" required value={form.city} onChange={set("city")} />
+                  <FormField label="Country" id="country" required value={form.country} onChange={set("country")} />
                 </div>
-                <Field
+                <FormField
                   label="Cities you travel to often"
                   id="travelCities"
                   optional
@@ -208,14 +184,14 @@ export default function ApplyPage() {
                   hint="Membership is by nomination — which Forum500 Member is recommending you?"
                 />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
+                  <FormField
                     label="Member's name"
                     id="recommender"
                     required
                     value={form.recommender}
                     onChange={set("recommender")}
                   />
-                  <Field
+                  <FormField
                     label="How do you know them?"
                     id="recommenderRelation"
                     optional

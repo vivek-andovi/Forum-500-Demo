@@ -5,11 +5,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './core/audit/audit.module';
 import { AuthGuard } from './core/auth/auth.guard';
 import { AuthModule } from './core/auth/auth.module';
-import { AllExceptionsFilter } from './core/common/prisma-exception.filter';
+import { AllExceptionsFilter } from './core/common/all-exceptions.filter';
 import { env } from './core/config/env';
-import { HealthController } from './core/health/health.controller';
-import { HealthRepository } from './core/health/health.repository';
+import { HealthModule } from './core/health/health.module';
 import { MailModule } from './core/mail/mail.module';
+import { NotificationsModule } from './core/notifications/notifications.module';
 import { PrismaModule } from './core/prisma/prisma.module';
 import { StorageModule } from './core/storage/storage.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -32,6 +32,8 @@ import { SiteModule } from './modules/site/site.module';
     StorageModule,
     MailModule,
     AuthModule,
+    NotificationsModule,
+    HealthModule,
     // Feature modules — one per hub of the member app, plus admin and site content
     SiteModule,
     DashboardModule,
@@ -41,9 +43,7 @@ import { SiteModule } from './modules/site/site.module';
     CommsModule,
     AdminModule,
   ],
-  controllers: [HealthController],
   providers: [
-    HealthRepository,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
