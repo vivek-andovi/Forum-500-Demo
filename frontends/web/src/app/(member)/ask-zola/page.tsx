@@ -6,11 +6,12 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
 import { DynamicIcon } from "@/components/DynamicIcon";
+import { MemberOnly } from "@/components/MemberOnly";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAskConcierge, useConcierge, useQuickPrompts } from "@/lib/queries";
+import { useAskConcierge, useConcierge, useQuickPrompts } from "@/features/comms/queries";
 import { useCurrentMember } from "@/hooks/useAuth";
 import { timeAgo } from "@/lib/format";
-import type { ConciergeStatus, QuickPrompt } from "@/lib/types";
+import type { ConciergeStatus, QuickPrompt } from "@/features/comms/types";
 
 const STATUS_STYLES: Record<ConciergeStatus, string> = {
   open: "border-border text-muted-foreground",
@@ -64,12 +65,12 @@ export default function AskZolaPage() {
 
       {meLoading ? (
         <QueryState isLoading />
-      ) : !member ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <p className="text-muted-foreground">Admin account — no member profile. Concierge requests are available to members only.</p>
-        </div>
       ) : (
-      <>
+      <MemberOnly
+        member={member}
+        variant="card"
+        message="Admin account — no member profile. Concierge requests are available to members only."
+      >
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-3">
@@ -179,7 +180,7 @@ export default function AskZolaPage() {
           </ul>
         </QueryState>
       </section>
-      </>
+      </MemberOnly>
       )}
     </div>
   );

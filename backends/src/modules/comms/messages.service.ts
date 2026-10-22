@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { z } from 'zod';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 import { MessagesRepository } from './messages.repository';
 
 export const NewMessageSchema = z.object({ recipientMemberId: z.string().uuid(), body: z.string().trim().min(1).max(4000) });
@@ -12,7 +12,7 @@ export const ReplySchema = z.object({ body: z.string().trim().min(1).max(4000) }
 export class MessagesService {
   constructor(
     private readonly repo: MessagesRepository,
-    private readonly members: MembersRepository,
+    private readonly members: MembersService,
   ) {}
 
   /** Inbox: one row per conversation with the other member, last message and unread flag. */
@@ -58,7 +58,12 @@ export class MessagesService {
 
   async reply(user: AuthUser, conversationId: string, body: string) {
     const memberId = requireMember(user);
-    if (!(await this.repo.findConversationFor(conversationId, memberId))) throw new NotFoundException('Conversation not found');
+    const conversation = await this.repo.findConversationFor(conversationId, memberId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    // The other member was deleted: keep the history readable, but nobody would receive a reply.
+    if (!conversation.participants.some((p) => p.memberId !== memberId)) {
+      throw new BadRequestException('This member is no longer in the club');
+    }
     const message = await this.repo.addMessage(conversationId, memberId, body);
     return { conversationId, message: { ...message, mine: true } };
   }

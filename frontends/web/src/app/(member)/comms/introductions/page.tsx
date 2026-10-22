@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Handshake, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { MemberOnly } from "@/components/MemberOnly";
 import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
@@ -20,14 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCurrentMember } from "@/hooks/useAuth";
-import {
-  useIntroductions,
-  useMembers,
-  useRequestIntroduction,
-  useRespondIntroduction,
-} from "@/lib/queries";
+import { useIntroductions, useRequestIntroduction, useRespondIntroduction } from "@/features/comms/queries";
+import { useMembers } from "@/features/membership/queries";
 import { timeAgo } from "@/lib/format";
-import type { IntroductionStatus, Member } from "@/lib/types";
+import type { IntroductionStatus } from "@/features/comms/types";
+import type { Member } from "@/features/membership/types";
 
 const statusLabel: Record<IntroductionStatus, string> = {
   requested: "Requested",
@@ -284,13 +282,18 @@ export default function IntroductionsPage() {
 
       {isLoading ? (
         <QueryState isLoading />
-      ) : myId ? (
-        <>
-          <IntroductionList myId={myId} />
-          <RequestDialog open={open} onOpenChange={setOpen} myId={myId} />
-        </>
       ) : (
-        <QueryState empty emptyText="Admin account — no member profile, so there are no introductions to show." />
+        <MemberOnly
+          member={myId}
+          fallback={<QueryState empty emptyText="Admin account — no member profile, so there are no introductions to show." />}
+        >
+          {(myId) => (
+            <>
+              <IntroductionList myId={myId} />
+              <RequestDialog open={open} onOpenChange={setOpen} myId={myId} />
+            </>
+          )}
+        </MemberOnly>
       )}
     </div>
   );

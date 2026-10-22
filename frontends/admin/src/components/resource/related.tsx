@@ -1,37 +1,15 @@
 "use client";
 
 import { useMeta } from "@/lib/meta";
+import { resourceConfig } from "@/lib/resource-registry";
 import type { AdminRecord, ResourceMeta } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResourceTable } from "@/components/resource/resource-table";
 
-/** Child resources shown under a parent record, keyed by parent resource name. */
-export const RELATED: Record<string, { resource: string; fk: string; label?: string }[]> = {
-  members: [
-    { resource: "event-rsvps", fk: "memberId", label: "RSVPs" },
-    { resource: "group-memberships", fk: "memberId", label: "Groups" },
-    { resource: "benefit-opt-ins", fk: "memberId", label: "Benefit opt-ins" },
-    { resource: "action-items", fk: "memberId", label: "Action items" },
-  ],
-  events: [
-    { resource: "event-rsvps", fk: "eventId", label: "RSVPs" },
-    { resource: "event-hosts", fk: "eventId", label: "Hosts" },
-  ],
-  groups: [{ resource: "group-memberships", fk: "groupId", label: "Members" }],
-  "inforum-editions": [{ resource: "edition-articles", fk: "editionId", label: "Articles" }],
-  "gallery-albums": [{ resource: "gallery-photos", fk: "albumId", label: "Photos" }],
-  "forecast-issues": [{ resource: "articles", fk: "forecastIssueId", label: "Articles" }],
-  "whatsapp-groups": [
-    { resource: "whatsapp-memberships", fk: "groupId", label: "Members" },
-    { resource: "whatsapp-messages", fk: "groupId", label: "Chat messages" },
-  ],
-  "nav-items": [{ resource: "nav-items", fk: "parentId", label: "Sub-items" }],
-  "benefit-offers": [{ resource: "benefit-opt-ins", fk: "offerId", label: "Opt-ins" }],
-};
-
+/** Child lists under a record, configured as `related` in lib/resource-registry. */
 export function RelatedTabs({ resource, record }: { resource: ResourceMeta; record: AdminRecord }) {
   const meta = useMeta();
-  const config = RELATED[resource.name];
+  const config = resourceConfig(resource.name).related;
   if (!config || !meta.data) return null;
   const tabs = config
     .map((c) => ({ ...c, meta: meta.data.resources.find((r) => r.name === c.resource) }))

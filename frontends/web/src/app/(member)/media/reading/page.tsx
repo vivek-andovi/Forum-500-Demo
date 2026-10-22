@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useReading } from "@/lib/queries";
+import { useReading } from "@/features/media/queries";
 
 export default function ReadingPage() {
   const { data: picks = [], isLoading, error } = useReading();

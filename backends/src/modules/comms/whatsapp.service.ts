@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { z } from 'zod';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
-import { MembersRepository } from '../membership/members.repository';
+import { MembersService } from '../membership/members.service';
 import { WhatsappRepository } from './whatsapp.repository';
 
 export const ChatMessageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
@@ -11,7 +11,7 @@ export const ChatMessageSchema = z.object({ body: z.string().trim().min(1).max(2
 export class WhatsappService {
   constructor(
     private readonly repo: WhatsappRepository,
-    private readonly members: MembersRepository,
+    private readonly members: MembersService,
   ) {}
 
   /** All groups; invite links only appear on the member's approved memberships. */
@@ -54,5 +54,11 @@ export class WhatsappService {
     const author = await this.members.findAuthor(memberId);
     const message = await this.repo.createMessage(groupId, memberId, author.fullName, body);
     return { ...message, authorSlug: author.slug, authorPhotoUrl: author.avatarUrl, mine: true };
+  }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  joinedGroups(memberId: string) {
+    return this.repo.listJoinedGroups(memberId);
   }
 }

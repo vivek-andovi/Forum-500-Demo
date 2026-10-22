@@ -6,9 +6,9 @@ import { X, Tag, Check, Images } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useGalleryAlbums, useTagPhoto } from "@/lib/queries";
+import { useGalleryAlbums, useTagPhoto } from "@/features/events/queries";
 import { useCurrentMember } from "@/hooks/useAuth";
-import type { GalleryAlbum, GalleryPhoto } from "@/lib/types";
+import type { GalleryAlbum, GalleryPhoto } from "@/features/events/types";
 
 export default function GalleryPage() {
   const router = useRouter();

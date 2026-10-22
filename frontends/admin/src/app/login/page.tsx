@@ -6,7 +6,8 @@ import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/api";
-import { usePageTitle } from "@/lib/use-debounce";
+import { safePath } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ function LoginForm() {
   usePageTitle("Sign in");
 
   useEffect(() => {
-    if (status === "authenticated") router.replace(next.startsWith("/") ? next : "/");
+    if (status === "authenticated") router.replace(safePath(next) ?? "/");
   }, [status, next, router]);
 
   async function onSubmit(e: React.FormEvent) {

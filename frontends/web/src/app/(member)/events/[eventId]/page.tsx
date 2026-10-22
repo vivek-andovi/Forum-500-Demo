@@ -7,11 +7,12 @@ import { ArrowLeft, CalendarPlus, Check, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
-import { useCancelRsvp, useEvent, useRsvp } from "@/lib/queries";
+import { ApiError } from "@/lib/api";
+import { useCancelRsvp, useEvent, useRsvp } from "@/features/events/queries";
 import { eventDate, eventTime, eventVenue } from "@/lib/format";
 import { downloadCalendarEvent } from "@/lib/event-calendar";
 import { useCurrentMember } from "@/hooks/useAuth";
-import type { RsvpStatus } from "@/lib/types";
+import type { RsvpStatus } from "@/features/events/types";
 
 const rsvpLabels: Record<RsvpStatus, string> = {
   confirmed: "RSVP confirmed — see you there.",
@@ -30,7 +31,8 @@ export default function EventDetailPage() {
   const [plusOnes, setPlusOnes] = useState(0);
   const [dietaryNote, setDietaryNote] = useState("");
 
-  if (isLoading || (error && !event)) {
+  const notFound = error instanceof ApiError && error.status === 404;
+  if (isLoading || (error && !notFound)) {
     return (
       <div className="space-y-8">
         <Link href="/events" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">

@@ -8,9 +8,9 @@ import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
 import { ChatComposer } from "@/components/ChatComposer";
 import { useCurrentMember } from "@/hooks/useAuth";
-import { useGroupChat, useJoinWhatsapp, usePostGroupMessage, useWhatsapp } from "@/lib/queries";
+import { useGroupChat, useJoinWhatsapp, usePostGroupMessage, useWhatsapp } from "@/features/comms/queries";
 import { fmtDate, timeAgo } from "@/lib/format";
-import type { GroupChatMessage, WhatsappGroup, WhatsappMembership } from "@/lib/types";
+import type { GroupChatMessage, WhatsappGroup, WhatsappMembership } from "@/features/comms/types";
 
 function msgTime(iso: string) {
   const d = new Date(iso);

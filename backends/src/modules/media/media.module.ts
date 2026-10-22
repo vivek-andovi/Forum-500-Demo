@@ -15,6 +15,6 @@ import { PublicationsService } from './publications.service';
   imports: [MembershipModule],
   controllers: [InforumController, PublicInforumController, PublicationsController, FeedController],
   providers: [InforumService, InforumRepository, PublicationsService, PublicationsRepository, FeedService, FeedRepository],
-  exports: [InforumService, PublicationsRepository],
+  exports: [InforumService, PublicationsService],
 })
 export class MediaModule {}

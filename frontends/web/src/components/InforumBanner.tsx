@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Newspaper } from "lucide-react";
-import { useEdition, usePublicPage } from "@/lib/queries";
+import { useEdition } from "@/features/media/queries";
+import { usePublicPage } from "@/features/site/queries";
 import { articleDate, readTime } from "@/lib/format";
 
 export function InforumBanner() {

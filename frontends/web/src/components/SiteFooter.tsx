@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePublicSite } from "@/lib/queries";
+import { usePublicSite } from "@/features/site/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function SiteFooter() {

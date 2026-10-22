@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { MEMBER_PRIVATE } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
 
 /** Member directory reads. */
@@ -19,12 +20,15 @@ export class MembersRepository {
         { interests: { has: filter.search } },
       ];
     }
-    return this.prisma.member.findMany({ where, orderBy: { fullName: 'asc' }, include: { chapter: true, sector: true } });
+    return this.prisma.member.findMany({
+      where, orderBy: { fullName: 'asc' }, omit: MEMBER_PRIVATE, include: { chapter: true, sector: true },
+    });
   }
 
   listFeaturedNew() {
     return this.prisma.member.findMany({
       where: { featuredNewMember: true, isPublished: true },
+      omit: MEMBER_PRIVATE,
       include: { interviews: { orderBy: { sortOrder: 'asc' } }, chapter: true },
     });
   }
@@ -32,6 +36,7 @@ export class MembersRepository {
   findPublishedBySlugOrId(slug: string, isUuid: boolean) {
     return this.prisma.member.findFirst({
       where: { OR: [{ slug }, ...(isUuid ? [{ id: slug }] : [])], isPublished: true },
+      omit: { phone: true, userId: true, profileDraft: true },
       include: { chapter: true, sector: true, tier: true, answers: { include: { question: true } } },
     });
   }

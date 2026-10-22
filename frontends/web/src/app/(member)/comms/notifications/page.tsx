@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { Bell, CalendarDays, CheckCircle2, Newspaper, UserRound, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
-import { useMarkNotificationRead, useNotifications } from "@/lib/queries";
+import { useMarkNotificationRead, useNotifications } from "@/features/comms/queries";
 import { timeAgo } from "@/lib/format";
-import type { Notification, NotificationType } from "@/lib/types";
+import type { Notification, NotificationType } from "@/features/comms/types";
 
 const typeIcon: Record<NotificationType, typeof Bell> = {
   new_member: Users,

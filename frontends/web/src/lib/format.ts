@@ -1,5 +1,6 @@
 import { format, isSameDay, parseISO } from "date-fns";
-import type { Article, ForumEvent } from "./types";
+import type { ForumEvent } from "@/features/events/types";
+import type { Article } from "@/features/media/types";
 
 function d(iso: string | null | undefined): Date | null {
   if (!iso) return null;
@@ -31,10 +32,6 @@ export function eventTime(e: Pick<ForumEvent, "timeLabel" | "startsAt" | "endsAt
 /** Venue label used in place of the prototype's `venue` string. */
 export function eventVenue(e: Pick<ForumEvent, "venue" | "venueText">): string {
   return e.venue?.name ?? e.venueText ?? "Venue to be announced";
-}
-
-export function eventHostNames(e: ForumEvent): string[] {
-  return (e.hosts ?? []).map((h) => h.member?.fullName).filter((n): n is string => !!n);
 }
 
 export function readTime(a: Pick<Article, "readMinutes">): string {

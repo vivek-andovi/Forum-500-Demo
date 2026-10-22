@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, errorMessage } from "@/lib/api";
-import { AuthCard, inputClass, primaryButtonClass } from "@/components/AuthCard";
+import { AuthCard } from "@/components/AuthCard";
+import { FormField, primaryButtonClass } from "@/components/form";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -38,11 +39,8 @@ export default function ForgotPasswordPage() {
         </p>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
-            <input id="email" type="email" required autoComplete="email" value={email}
-              onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-          </div>
+          <FormField label="Email" id="email" type="email" required autoComplete="email" value={email}
+            onChange={(e) => setEmail(e.target.value)} />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <button type="submit" disabled={busy} className={primaryButtonClass}>
             {busy ? "Sending…" : "Send reset link"}

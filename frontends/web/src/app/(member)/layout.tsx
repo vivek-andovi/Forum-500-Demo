@@ -6,8 +6,8 @@ import { Loader2, Menu } from "lucide-react";
 import { MemberSidebar } from "@/components/MemberSidebar";
 import { InforumBanner } from "@/components/InforumBanner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { useToken } from "@/hooks/useAuth";
-import { useMe } from "@/lib/queries";
+import { takeSignOutRedirect, useToken } from "@/hooks/useAuth";
+import { useMe } from "@/features/auth/queries";
 import { ApiError } from "@/lib/api";
 
 export default function MemberLayout({ children }: { children: ReactNode }) {
@@ -15,8 +15,11 @@ export default function MemberLayout({ children }: { children: ReactNode }) {
   const token = useToken();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // The single place that leaves the member area when the session ends (sign-out, expiry, 401).
   useEffect(() => {
-    if (token === null) router.replace("/auth");
+    if (token !== null) return;
+    const here = window.location.pathname + window.location.search;
+    router.replace(takeSignOutRedirect() ?? `/auth?next=${encodeURIComponent(here)}`);
   }, [token, router]);
 
   if (!token) {
@@ -60,15 +63,13 @@ export default function MemberLayout({ children }: { children: ReactNode }) {
   );
 }
 
-/** Validates the token against /v1/me before rendering member pages. */
+/**
+ * Validates the token against /v1/me before rendering member pages. A 401 clears the token
+ * (lib/api.ts), and the layout above then redirects.
+ */
 function AuthGate({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const me = useMe();
   const unauthorized = me.error instanceof ApiError && me.error.status === 401;
-
-  useEffect(() => {
-    if (unauthorized) router.replace("/auth");
-  }, [unauthorized, router]);
 
   if (me.isLoading || unauthorized) {
     return (

@@ -20,4 +20,11 @@ export class InboxService {
     await this.repo.markNotificationRead(id, user.memberId ?? NO_MEMBER);
     return { ok: true };
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  /** Raw latest email campaigns for a member (dashboard teaser). */
+  recentEmails(memberId: string, take: number) {
+    return this.repo.listEmails(memberId, take);
+  }
 }

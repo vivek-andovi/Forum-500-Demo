@@ -7,22 +7,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, PenSquare, Search } from "lucide-react";
 import { ChatComposer as Composer } from "@/components/ChatComposer";
 import { PageHeader } from "@/components/PageHeader";
+import { MemberOnly } from "@/components/MemberOnly";
 import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCurrentMember } from "@/hooks/useAuth";
-import {
-  qk,
-  useConversation,
-  useConversations,
-  useMember,
-  useMembers,
-  useReply,
-  useSendMessage,
-} from "@/lib/queries";
+import { qk } from "@/lib/query-keys";
+import { useConversation, useConversations, useReply, useSendMessage } from "@/features/comms/queries";
+import { useMember, useMembers } from "@/features/membership/queries";
 import { fmtDate, timeAgo } from "@/lib/format";
-import type { ConversationSummary, DirectMessage, MessageMember } from "@/lib/types";
+import type { ConversationSummary, DirectMessage, MessageMember } from "@/features/comms/types";
 
 export default function MessagesPage() {
   return (
@@ -58,14 +53,14 @@ function MessagesInner() {
 
       {meLoading ? (
         <QueryState isLoading />
-      ) : !me ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <p className="text-muted-foreground">
-            Admin account — no member profile. Direct messages are available to members only.
-          </p>
-        </div>
       ) : (
-        <Inbox myId={me.id} composeOpen={composeOpen} setComposeOpen={setComposeOpen} />
+        <MemberOnly
+          member={me}
+          variant="card"
+          message="Admin account — no member profile. Direct messages are available to members only."
+        >
+          {(m) => <Inbox myId={m.id} composeOpen={composeOpen} setComposeOpen={setComposeOpen} />}
+        </MemberOnly>
       )}
     </div>
   );
@@ -88,7 +83,7 @@ function Inbox({
   const list = conversations.data ?? [];
 
   // `?to=<memberId>`: open the existing conversation with that member, if any.
-  const existingForTo = toId ? list.find((c) => c.otherMember.id === toId) : undefined;
+  const existingForTo = toId ? list.find((c) => c.otherMember?.id === toId) : undefined;
   useEffect(() => {
     if (existingForTo) router.replace(`/comms/messages?c=${existingForTo.id}`);
   }, [existingForTo, router]);
@@ -97,7 +92,7 @@ function Inbox({
 
   function startWith(memberId: string) {
     setComposeOpen(false);
-    const existing = list.find((c) => c.otherMember.id === memberId);
+    const existing = list.find((c) => c.otherMember?.id === memberId);
     router.push(existing ? `/comms/messages?c=${existing.id}` : `/comms/messages?to=${memberId}`);
   }
 
@@ -174,6 +169,7 @@ function Inbox({
 
 function ConversationRow({ c, active }: { c: ConversationSummary; active: boolean }) {
   const preview = c.lastMessage ? `${c.lastMessage.mine ? "You: " : ""}${c.lastMessage.body}` : "No messages yet";
+  const other = c.otherMember ?? FORMER_MEMBER;
   return (
     <li>
       <Link
@@ -181,10 +177,10 @@ function ConversationRow({ c, active }: { c: ConversationSummary; active: boolea
         scroll={false}
         className={`flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40 ${active ? "bg-secondary/60" : ""}`}
       >
-        <MemberAvatar src={c.otherMember.avatarUrl} name={c.otherMember.fullName} className="h-11 w-11 shrink-0 rounded-full" />
+        <MemberAvatar src={other.avatarUrl} name={other.fullName} className="h-11 w-11 shrink-0 rounded-full" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <p className={`truncate text-sm ${c.unread ? "font-bold" : "font-medium"}`}>{c.otherMember.fullName}</p>
+            <p className={`truncate text-sm ${c.unread ? "font-bold" : "font-medium"}`}>{other.fullName}</p>
             <span className="shrink-0 text-xs text-muted-foreground">
               {timeAgo(c.lastMessage?.createdAt ?? c.lastMessageAt)}
             </span>
@@ -197,6 +193,9 @@ function ConversationRow({ c, active }: { c: ConversationSummary; active: boolea
   );
 }
 
+/** Stand-in for a conversation partner whose membership was deleted. */
+const FORMER_MEMBER = { slug: "", fullName: "Former member", avatarUrl: null, headline: null, company: null };
+
 function PanelHeader({ member }: { member: Pick<MessageMember, "slug" | "fullName" | "avatarUrl" | "headline" | "company"> }) {
   const role = [member.headline, member.company].filter(Boolean).join(", ");
   return (
@@ -206,9 +205,13 @@ function PanelHeader({ member }: { member: Pick<MessageMember, "slug" | "fullNam
       </Link>
       <MemberAvatar src={member.avatarUrl} name={member.fullName} className="h-9 w-9 shrink-0 rounded-full" />
       <div className="min-w-0">
-        <Link href={`/membership/${member.slug}`} className="truncate text-sm font-semibold hover:underline">
-          {member.fullName}
-        </Link>
+        {member.slug ? (
+          <Link href={`/membership/${member.slug}`} className="truncate text-sm font-semibold hover:underline">
+            {member.fullName}
+          </Link>
+        ) : (
+          <p className="truncate text-sm font-semibold">{member.fullName}</p>
+        )}
         {role && <p className="truncate text-xs text-muted-foreground">{role}</p>}
       </div>
     </div>
@@ -231,13 +234,19 @@ function ThreadPanel({ conversationId }: { conversationId: string }) {
 
   return (
     <>
-      <PanelHeader member={data.otherMember} />
+      <PanelHeader member={data.otherMember ?? FORMER_MEMBER} />
       <MessageList messages={data.messages} />
-      <Composer
-        busy={reply.isPending}
-        placeholder={`Message ${data.otherMember.fullName.split(" ")[0]}…`}
-        onSend={(body) => reply.mutateAsync({ conversationId, body })}
-      />
+      {data.otherMember ? (
+        <Composer
+          busy={reply.isPending}
+          placeholder={`Message ${data.otherMember.fullName.split(" ")[0]}…`}
+          onSend={(body) => reply.mutateAsync({ conversationId, body })}
+        />
+      ) : (
+        <p className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground">
+          This member is no longer in the club, so you can&apos;t reply.
+        </p>
+      )}
     </>
   );
 }

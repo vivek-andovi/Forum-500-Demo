@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ClipboardCheck, LayoutDashboard, LogOut, Menu, ChevronDown } from "lucide-react";
+import { LogOut, Menu, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { groupResources, useMeta } from "@/lib/meta";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { ApprovalSummary } from "@/lib/types";
-import { GROUP_ICONS, resourceIcon } from "@/components/layout/icons";
+import { useApprovals } from "@/lib/queries";
+import { NAV_PAGES, resourceIcon } from "@/lib/resource-registry";
+import { GROUP_ICONS } from "@/components/layout/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,32 +62,24 @@ function NavLink({
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const meta = useMeta();
-  const approvals = useQuery({
-    queryKey: ["approvals"],
-    queryFn: () => api<ApprovalSummary[]>("/admin/approvals"),
-    staleTime: 60_000,
-  });
+  const approvals = useApprovals();
   const pendingCount = (approvals.data ?? []).reduce((n, a) => n + (a.count || 0), 0);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   return (
     <nav className="scrollbar-sidebar flex-1 space-y-5 overflow-y-auto px-3 pb-6">
       <div className="space-y-0.5">
-        <NavLink
-          href="/"
-          icon={LayoutDashboard}
-          label="Dashboard"
-          active={pathname === "/"}
-          onNavigate={onNavigate}
-        />
-        <NavLink
-          href="/approvals"
-          icon={ClipboardCheck}
-          label="Approvals"
-          active={pathname === "/approvals"}
-          badge={pendingCount}
-          onNavigate={onNavigate}
-        />
+        {NAV_PAGES.map((p) => (
+          <NavLink
+            key={p.href}
+            href={p.href}
+            icon={p.icon}
+            label={p.label}
+            active={pathname === p.href}
+            badge={p.badge === "pendingApprovals" ? pendingCount : undefined}
+            onNavigate={onNavigate}
+          />
+        ))}
       </div>
       {meta.isLoading && (
         <div className="space-y-2 px-2">

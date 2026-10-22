@@ -1,5 +1,7 @@
 # Forum500 on AWS
 
+> **Recommended:** create everything with Terraform. See [TERRAFORM.md](TERRAFORM.md). This page explains the architecture and the equivalent manual (console/CLI) steps.
+
 Everything runs on AWS. The API code already supports S3, SES, RDS and Secrets Manager; you switch them on with environment variables. Config files live in `infra/aws/`.
 
 ## Architecture

@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PUBLISHED } from '../../core/common/member-context';
+import { MEMBER_PRIVATE, PUBLISHED } from '../../core/common/member-context';
 import { PrismaService } from '../../core/prisma/prisma.service';
 
 /** Private addresses are never selected for lists; only `findPublishedBySlug` loads them. */
 const OMIT_ADDRESS = { privateAddress: true } as const;
 const PUBLIC_VENUE = { venue: { omit: OMIT_ADDRESS } } as const;
-const WITH_HOSTS = { ...PUBLIC_VENUE, hosts: { include: { member: true } } } as const;
+const HOSTS = { include: { member: { omit: MEMBER_PRIVATE } } } as const;
+const WITH_HOSTS = { ...PUBLIC_VENUE, hosts: HOSTS } as const;
 
 @Injectable()
 export class EventsRepository {
@@ -56,7 +57,7 @@ export class EventsRepository {
   }
 
   findPublishedBySlug(slug: string) {
-    return this.prisma.event.findFirst({ where: { slug, ...PUBLISHED }, include: { venue: true, hosts: { include: { member: true } } } });
+    return this.prisma.event.findFirst({ where: { slug, ...PUBLISHED }, include: { venue: true, hosts: HOSTS } });
   }
 
   findPublishedById(id: string) {

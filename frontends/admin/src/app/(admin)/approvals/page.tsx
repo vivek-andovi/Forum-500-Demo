@@ -1,10 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
-import { api } from "@/lib/api";
-import { usePageTitle } from "@/lib/use-debounce";
-import type { ApprovalSummary } from "@/lib/types";
+import { useApprovals } from "@/lib/queries";
+import { usePageTitle } from "@/lib/use-page-title";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/page-header";
 import { EmptyState, ErrorState } from "@/components/common/empty-state";
@@ -12,10 +10,7 @@ import { ApprovalCard } from "@/components/common/approval-card";
 
 export default function ApprovalsPage() {
   usePageTitle("Approvals");
-  const q = useQuery({
-    queryKey: ["approvals"],
-    queryFn: () => api<ApprovalSummary[]>("/admin/approvals"),
-  });
+  const q = useApprovals({ fresh: true });
   const items = [...(q.data ?? [])].sort((a, b) => b.count - a.count);
   const total = items.reduce((n, a) => n + a.count, 0);
 

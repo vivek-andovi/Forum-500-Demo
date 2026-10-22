@@ -5,6 +5,8 @@ import { AdminCrudController } from './admin-crud.controller';
 import { AdminCrudRepository } from './admin-crud.repository';
 import { AdminCrudService } from './admin-crud.service';
 import { AdminDashboardRepository } from './admin-dashboard.repository';
+import { AdminMetadataService } from './admin-metadata.service';
+import { AdminStatusEffectsService } from './admin-status-effects.service';
 import { AdminWorkflowsController } from './admin-workflows.controller';
 import { AdminWorkflowsService } from './admin-workflows.service';
 import { AssetsRepository } from './assets.repository';
@@ -14,6 +16,10 @@ import { UploadsController } from './uploads.controller';
 @Module({
   imports: [MembershipModule, MediaModule],
   controllers: [AdminCrudController, AdminWorkflowsController, UploadsController],
-  providers: [AdminCrudService, AdminCrudRepository, AdminWorkflowsService, AdminDashboardRepository, AssetsRepository],
+  providers: [
+    AdminCrudService, AdminMetadataService, AdminStatusEffectsService, AdminCrudRepository,
+    AdminWorkflowsService, AdminDashboardRepository,
+    AssetsRepository,
+  ],
 })
 export class AdminModule {}

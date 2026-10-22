@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { setToken, errorMessage } from "@/lib/api";
-import { qk, useLogin } from "@/lib/queries";
-import { useToken } from "@/hooks/useAuth";
+import { useLogin } from "@/features/auth/queries";
+import { safePath, useToken } from "@/hooks/useAuth";
+import { FormField, inputClass, primaryButtonClass } from "@/components/form";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) router.replace("/dashboard");
+    if (token) router.replace(afterLoginPath());
   }, [token, router]);
 
   function onSubmit(e: React.FormEvent) {
@@ -30,9 +31,8 @@ export default function AuthPage() {
         onSuccess: (res) => {
           // Admins are allowed too — they simply have no member profile.
           qc.clear();
-          qc.setQueryData(qk.me, { user: res.user, member: res.member, pendingRevision: null });
           setToken(res.accessToken);
-          router.push("/dashboard");
+          router.push(afterLoginPath());
         },
         onError: (err) => setError(errorMessage(err)),
       },
@@ -52,18 +52,15 @@ export default function AuthPage() {
           </p>
         </div>
         <form onSubmit={onSubmit} className="mt-8 space-y-4 rounded-lg border border-border bg-card p-6">
-          <div>
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
+          <FormField
+            label="Email"
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
           <div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium" htmlFor="password">Password</label>
@@ -79,14 +76,14 @@ export default function AuthPage() {
               required
               minLength={6}
               autoComplete="current-password"
-              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className={inputClass}
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+            className={primaryButtonClass}
           >
             {busy ? "One moment…" : "Sign in"}
           </button>
@@ -100,4 +97,9 @@ export default function AuthPage() {
       </div>
     </div>
   );
+}
+
+/** The page the member was on before being sent to sign in (?next=), else the dashboard. */
+function afterLoginPath() {
+  return safePath(new URLSearchParams(window.location.search).get("next")) ?? "/dashboard";
 }

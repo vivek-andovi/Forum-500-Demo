@@ -3,7 +3,7 @@ name: Backend — CI & Deploy to AWS ECS
 on:
   push:
     branches: [main, develop]
-    paths: ['backends/**', 'infra/aws/ecs-task-definition.json', '.github/workflows/backend-ci-deploy.yml']
+    paths: ['backends/**', '.github/workflows/backend-ci-deploy.yml']
   pull_request:
     paths: ['backends/**']
   workflow_dispatch:
@@ -12,11 +12,10 @@ permissions:
   id-token: write # GitHub OIDC → AWS (no long-lived AWS keys in GitHub)
   contents: read
 
+# Names match infra/terraform (forum500-<environment>-…).
 env:
   AWS_REGION: eu-west-2
-  ECR_REPOSITORY: forum500-api
-  ECS_CLUSTER: forum500
-  ECS_SERVICE: ${{ github.ref_name == 'main' && 'forum500-api-prod' || 'forum500-api-staging' }}
+  TF_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
 jobs:
   check:
@@ -41,6 +40,13 @@ jobs:
       - run: npx prisma migrate deploy
       - run: npm run db:seed
       - run: npm run build
+      # API tests against the freshly seeded throwaway database (see test/api.e2e.test.mjs).
+      - name: End-to-end API tests
+        env: { PORT: '4100', API_URL: 'http://localhost:4100/api' }
+        run: |
+          node dist/main > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf "$API_URL/health" >/dev/null && break; sleep 1; done
+          npm run test:e2e || (cat api.log; exit 1)
       # Remaining known advisories are in the Prisma CLI config loader (fixed in Prisma 7);
       # see docs/SECURITY.md. Make this blocking after the Prisma 7 upgrade.
       - run: npm audit --omit=dev --audit-level=high
@@ -61,17 +67,28 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
+      - name: Resolve resource names
+        run: |
+          echo "ECR_REPOSITORY=forum500-${TF_ENV}-api" >> "$GITHUB_ENV"
+          echo "ECS_CLUSTER=forum500-${TF_ENV}" >> "$GITHUB_ENV"
+          echo "ECS_SERVICE=forum500-${TF_ENV}-api" >> "$GITHUB_ENV"
+          echo "TASK_FAMILY=forum500-${TF_ENV}-api" >> "$GITHUB_ENV"
       - name: Build & push image (arm64 for Fargate Graviton)
         id: image
         run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          IMAGE=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ github.sha }}
           docker buildx build --platform linux/arm64 -t "$IMAGE" --push backends
           echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
+      # Terraform owns the task definition (env, secrets, roles); CI only swaps the image.
+      - name: Fetch current task definition
+        run: |
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition \
+            | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' > taskdef.json
       - name: Render task definition
         id: taskdef
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: infra/aws/ecs-task-definition.json
+          task-definition: taskdef.json
           container-name: api
           image: ${{ steps.image.outputs.uri }}
       - name: Deploy to ECS (migrations run on container start)

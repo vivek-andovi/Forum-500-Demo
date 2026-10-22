@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { requestContext } from './core/common/request-context';
 import { env } from './core/config/env';
 
 async function bootstrap() {
@@ -16,6 +17,8 @@ async function bootstrap() {
   app.disable('x-powered-by');
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { limit: '1mb', extended: false });
+  // After the body parsers (their stream callbacks would lose it): who is acting, for createdBy/updatedBy.
+  app.use(requestContext.middleware);
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   const origins = cfg.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);

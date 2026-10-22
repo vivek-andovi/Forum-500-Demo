@@ -25,6 +25,6 @@ import { ProfileService } from './profile.service';
     BenefitsService, BenefitsRepository,
     GroupsService, GroupsRepository,
   ],
-  exports: [MembersRepository, ProfileService, ApplicationsService, BenefitsRepository, GroupsService],
+  exports: [MembersService, ProfileService, ApplicationsService, BenefitsService, GroupsService],
 })
 export class MembershipModule {}

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Linkedin, MessageSquare } from "lucide-react";
 import { MemberAvatar } from "@/components/Avatar";
 import { QueryState } from "@/components/QueryState";
-import { useMember } from "@/lib/queries";
+import { useMember } from "@/features/membership/queries";
 import { useCurrentMember } from "@/hooks/useAuth";
 import { ApiError } from "@/lib/api";
 

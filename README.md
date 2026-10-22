@@ -14,6 +14,7 @@ forum500-monorepo/
 ├── frontends/
 │   ├── admin/                Next.js admin portal (port 3001)        → Vercel project, root = frontends/admin
 │   └── web/                  Next.js member app + public site (3000) → Vercel project, root = frontends/web
+├── infra/terraform/          Terraform for all AWS resources (staging + production)
 ├── docs/
 │   ├── API_CONTRACT.md       every endpoint and response shape
 │   ├── DEPLOYMENT.md         how each app is deployed
@@ -49,10 +50,10 @@ npm run db:seed            # load all prototype content
 npm run start:dev          # http://localhost:4000/api   (Swagger: http://localhost:4000/docs)
 
 # 3. Admin portal
-cd ../frontends/admin && cp .env.example .env.local && npm install && npm run dev   # http://localhost:3001
+cd ../frontends/admin && cp .env.example .env && npm install && npm run dev   # http://localhost:3001
 
 # 4. Member app
-cd ../web && cp .env.example .env.local && npm install && npm run dev              # http://localhost:3000
+cd ../web && cp .env.example .env && npm install && npm run dev              # http://localhost:3002
 ```
 
 **Logins (seeded):**
@@ -61,6 +62,25 @@ cd ../web && cp .env.example .env.local && npm install && npm run dev           
 |---|---|---|
 | Admin portal | `admin@forum500.club` | `Admin@12345` |
 | Member app | `anish@forum500.club` | `Member@12345` (every seeded member uses `<slug>@forum500.club` with the same password) |
+
+## Checks and tests
+
+Run these before pushing. CI runs the same steps for each app.
+
+```bash
+cd backends
+npm run check:types      # TypeScript
+npm run check:layers     # only *.repository.ts touch the DB; modules don't import each other's repositories
+npm run test:e2e         # API tests; needs a running API on a freshly seeded *throwaway* DB (see test/api.e2e.test.mjs)
+
+cd ../frontends/admin && npx tsc --noEmit && npm run build
+cd ../web && npx tsc --noEmit && npm run build
+```
+
+When you fix a bug, add a test for it to `backends/test/api.e2e.test.mjs`.
+
+**Demo data on hosted demos:** the API container loads the demo seed at startup only when `SEED_ON_START=1`
+and the database has no users. Never set it in production: the seed creates `admin@forum500.club` with a known password.
 
 ## Deployment (AWS)
 
@@ -73,6 +93,8 @@ See [docs/AWS_SETUP.md](docs/AWS_SETUP.md) and [docs/DEPLOYMENT.md](docs/DEPLOYM
 | `frontends/web` | Amplify Hosting (forum500.club) | push touching `frontends/web/**` |
 
 ## More docs
+- [docs/TERRAFORM.md](docs/TERRAFORM.md) — Infrastructure as Code: every AWS resource, setup steps, environments, costs, CI/CD split
+- [docs/TECH_OVERVIEW.md](docs/TECH_OVERVIEW.md) — one-page summary for stakeholders: packages, services (now vs planned), sequence diagrams, every DB table and its operations, known gaps
 - [docs/BACKEND_ARCHITECTURE.md](docs/BACKEND_ARCHITECTURE.md) — modules, controller → service → repository layering, where every piece of content lives
 - [docs/SECURITY.md](docs/SECURITY.md) — every security control and the known remaining items
 - [docs/AUTH0.md](docs/AUTH0.md) — how to switch login to Auth0 (and Auth0 vs Cognito)

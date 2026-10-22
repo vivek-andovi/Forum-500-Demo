@@ -22,17 +22,3 @@ export function AuthCard({ eyebrow, title, intro, children, footer }: {
     </div>
   );
 }
-
-export const inputClass =
-  "mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring";
-export const primaryButtonClass =
-  "w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60";
-
-/** Mirrors the API password policy so members see problems before submitting. */
-export function passwordProblems(pw: string): string[] {
-  const out: string[] = [];
-  if (pw.length < 10) out.push("at least 10 characters");
-  if (!/[A-Za-z]/.test(pw)) out.push("a letter");
-  if (!/\d/.test(pw)) out.push("a number");
-  return out;
-}

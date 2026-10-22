@@ -1,0 +1,96 @@
+import { ResourceConfig } from './types';
+
+/** Admin sidebar group: Media. Order here is the order in the sidebar. */
+export const MEDIA_RESOURCES: ResourceConfig[] = [
+  {
+    name: 'articles', model: 'Article', label: 'Articles', singular: 'Article', group: 'Media',
+    labelField: 'title',
+    listColumns: ['imageUrl', 'title', 'publication', 'sectionId', 'authorName', 'editorsChoice', 'status', 'publishedAt'],
+    searchFields: ['title', 'standfirst', 'authorName'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+  {
+    name: 'inforum-editions', model: 'InforumEdition', label: 'In:Forum Editions', singular: 'Edition', group: 'Media',
+    labelField: 'label',
+    listColumns: ['coverUrl', 'label', 'publishedOn', 'coverLine', 'visibility', 'status'],
+    searchFields: ['label', 'coverLine'],
+    defaultSort: { field: 'publishedOn', order: 'desc' },
+  },
+  {
+    name: 'edition-articles', model: 'EditionArticle', label: 'Edition Articles', singular: 'Edition Article', group: 'Media',
+    listColumns: ['editionId', 'articleId', 'sortOrder'],
+    searchFields: [],
+    defaultSort: { field: 'sortOrder', order: 'asc' },
+  },
+  {
+    name: 'inforum-sections', model: 'InforumSection', label: 'In:Forum Sections', singular: 'Section', group: 'Media',
+    labelField: 'label',
+    listColumns: ['label', 'key', 'sortOrder'],
+    searchFields: ['label', 'key'],
+    defaultSort: { field: 'sortOrder', order: 'asc' },
+  },
+  {
+    name: 'forecast-issues', model: 'ForecastIssue', label: 'Forecast Issues', singular: 'Forecast Issue', group: 'Media',
+    labelField: 'title',
+    listColumns: ['coverUrl', 'issue', 'title', 'dateLabel', 'status'],
+    searchFields: ['title', 'issue'],
+    defaultSort: { field: 'publishedOn', order: 'desc' },
+  },
+  {
+    name: 'pitches', model: 'Pitch', label: 'Pitches', singular: 'Pitch', group: 'Media',
+    labelField: 'headline',
+    listColumns: ['headline', 'memberId', 'section', 'format', 'status', 'createdAt'],
+    searchFields: ['headline', 'synopsis'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+    workflowStatuses: ['approved', 'rejected'],
+  },
+  {
+    name: 'recommendations', model: 'Recommendation', label: 'Member Recommendations', singular: 'Recommendation', group: 'Media',
+    labelField: 'title',
+    listColumns: ['imageUrl', 'title', 'category', 'memberName', 'status'],
+    searchFields: ['title', 'place', 'memberName'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+  {
+    name: 'comments', model: 'Comment', label: 'Comments', singular: 'Comment', group: 'Media',
+    labelField: 'body',
+    listColumns: ['memberName', 'body', 'parentId', 'recommends', 'status', 'createdAt'],
+    searchFields: ['body', 'memberName'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+  {
+    name: 'podcast-episodes', model: 'PodcastEpisode', label: 'Podcasts / Forum Radio', singular: 'Episode', group: 'Media',
+    labelField: 'title',
+    listColumns: ['number', 'title', 'guestName', 'durationMinutes', 'status', 'publishedAt'],
+    searchFields: ['title', 'guestName', 'description'],
+    defaultSort: { field: 'number', order: 'desc' },
+  },
+  {
+    name: 'books', model: 'Book', label: 'Books', singular: 'Book', group: 'Media',
+    labelField: 'title',
+    listColumns: ['coverUrl', 'title', 'authorName', 'isMemberBook', 'status'],
+    searchFields: ['title', 'authorName'],
+    defaultSort: { field: 'sortOrder', order: 'asc' },
+  },
+  {
+    name: 'book-recommendations', model: 'BookRecommendation', label: 'Reading Picks', singular: 'Reading Pick', group: 'Media',
+    labelField: 'title',
+    listColumns: ['title', 'recommendedByName', 'chapter', 'isCuratedPick', 'status'],
+    searchFields: ['title', 'recommendedByName', 'note'],
+    defaultSort: { field: 'sortOrder', order: 'asc' },
+  },
+  {
+    name: 'library-items', model: 'LibraryItem', label: 'Library', singular: 'Library Item', group: 'Media',
+    labelField: 'title',
+    listColumns: ['title', 'kind', 'pages', 'status'],
+    searchFields: ['title', 'description'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+  {
+    name: 'feed-posts', model: 'FeedPost', label: 'Newsfeed Posts', singular: 'Post', group: 'Media',
+    labelField: 'body',
+    listColumns: ['authorName', 'body', 'imageUrl', 'likes', 'pinned', 'status', 'createdAt'],
+    searchFields: ['body', 'authorName'],
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+];

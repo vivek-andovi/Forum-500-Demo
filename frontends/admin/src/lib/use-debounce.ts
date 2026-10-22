@@ -8,9 +8,3 @@ export function useDebounce<T>(value: T, delay = 300): T {
   }, [value, delay]);
   return debounced;
 }
-
-export function usePageTitle(title: string | undefined) {
-  useEffect(() => {
-    if (title) document.title = `${title} · Forum500 Admin`;
-  }, [title]);
-}

@@ -21,4 +21,10 @@ export class ActionsService {
     if (!action || (action.memberId && action.memberId !== memberId)) throw new NotFoundException('Action not found');
     return action.memberId ? this.repo.complete(id) : this.repo.completeGlobalFor(action, memberId);
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  pendingForDashboard(memberId: string | null) {
+    return this.repo.listPendingForDashboard(memberId);
+  }
 }

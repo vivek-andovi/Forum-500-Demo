@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ArrowRight, Newspaper } from "lucide-react";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePublicPage } from "@/lib/queries";
-import type { ContentCard } from "@/lib/types";
+import { usePublicPage } from "@/features/site/queries";
+import type { ContentCard } from "@/features/site/types";
 
 export function HomeContent() {
   const q = usePublicPage("home");

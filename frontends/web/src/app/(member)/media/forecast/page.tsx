@@ -5,10 +5,11 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueryState } from "@/components/QueryState";
-import { useForecast } from "@/lib/queries";
+import { useForecast } from "@/features/media/queries";
 import { readTime } from "@/lib/format";
-import type { Article, ForecastIssue } from "@/lib/types";
+import type { Article, ForecastIssue } from "@/features/media/types";
 import { cn } from "@/lib/utils";
+import { sectionName } from "@/components/media/sectionName";
 
 // A "page" in the reader: 0 = cover, 1 = letter, 2 = contents, 3+ = articles
 function pageLabel(page: number, total: number) {
@@ -16,10 +17,6 @@ function pageLabel(page: number, total: number) {
   if (page === 1) return "Letter";
   if (page === 2) return "Contents";
   return `Page ${page - 2} of ${total - 3}`;
-}
-
-function sectionName(a: Article) {
-  return a.sectionLabel ?? a.section?.label ?? "";
 }
 
 function byline(a: Article) {

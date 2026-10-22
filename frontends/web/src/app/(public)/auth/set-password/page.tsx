@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage, setToken } from "@/lib/api";
-import { qk } from "@/lib/queries";
-import type { LoginResponse } from "@/lib/types";
-import { AuthCard, inputClass, passwordProblems, primaryButtonClass } from "@/components/AuthCard";
+import type { LoginResponse } from "@/features/auth/types";
+import { AuthCard } from "@/components/AuthCard";
+import { FormField, primaryButtonClass } from "@/components/form";
+import { passwordProblems } from "@/features/auth/password";
 
 function SetPasswordForm() {
   const params = useSearchParams();
@@ -30,7 +31,6 @@ function SetPasswordForm() {
     try {
       const res = await api<LoginResponse>("/auth/set-password", { method: "POST", body: { token, password }, auth: false });
       qc.clear();
-      qc.setQueryData(qk.me, { user: res.user, member: res.member, pendingRevision: null });
       setToken(res.accessToken);
       // New members land on their profile to complete it; resets go to the dashboard.
       router.push(isReset ? "/dashboard" : "/membership/profile");
@@ -57,19 +57,14 @@ function SetPasswordForm() {
       footer={<Link href="/auth" className="font-semibold text-accent hover:underline">Back to sign in</Link>}
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label className="text-sm font-medium" htmlFor="password">New password</label>
-          <input id="password" type="password" required autoComplete="new-password" value={password}
-            onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+        <FormField label="New password" id="password" type="password" required autoComplete="new-password"
+          value={password} onChange={(e) => setPassword(e.target.value)}>
           <p className={`mt-1.5 text-xs ${password && problems.length ? "text-destructive" : "text-muted-foreground"}`}>
             At least 10 characters, with a letter and a number.
           </p>
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="confirm">Confirm password</label>
-          <input id="confirm" type="password" required autoComplete="new-password" value={confirm}
-            onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
-        </div>
+        </FormField>
+        <FormField label="Confirm password" id="confirm" type="password" required autoComplete="new-password"
+          value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         {error && <p className="text-sm text-destructive">{error}</p>}
         <button type="submit" disabled={busy} className={primaryButtonClass}>
           {busy ? "Saving…" : isReset ? "Update password" : "Activate account"}

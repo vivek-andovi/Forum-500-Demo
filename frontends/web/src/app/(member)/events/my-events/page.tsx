@@ -5,13 +5,17 @@ import Link from "next/link";
 import { CalendarPlus, LifeBuoy, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { MemberOnly } from "@/components/MemberOnly";
 import { EventsCalendar } from "@/components/EventsCalendar";
 import { QueryState } from "@/components/QueryState";
-import { useAskConcierge, useEvents, useLookups, useMyEvents, useProposeEvent, useWhatsapp, useSiteSettings } from "@/lib/queries";
+import { useAskConcierge, useWhatsapp } from "@/features/comms/queries";
+import { useEvents, useMyEvents, useProposeEvent } from "@/features/events/queries";
+import { useLookups, useSiteSettings } from "@/features/site/queries";
 import { eventDate, eventVenue } from "@/lib/format";
 import { downloadCalendarEvent } from "@/lib/event-calendar";
 import { useCurrentMember } from "@/hooks/useAuth";
-import type { ContentStatus, ForumEvent } from "@/lib/types";
+import type { ContentStatus } from "@/lib/types/common";
+import type { ForumEvent } from "@/features/events/types";
 
 const WHATSAPP_AUDIENCE = "WhatsApp chapter groups";
 
@@ -44,7 +48,14 @@ export default function MyEventsPage() {
         description="Everything you are attending or hosting, in one place — and where you propose a new gathering."
       />
 
-      {member ? (
+      <MemberOnly
+        member={member}
+        fallback={
+          !authLoading && (
+            <p className="text-sm text-muted-foreground">Admin account — no member profile, so there are no personal events.</p>
+          )
+        }
+      >
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
@@ -70,11 +81,7 @@ export default function MyEventsPage() {
             <LifeBuoy className="h-4 w-4" /> Request support from Forum
           </button>
         </div>
-      ) : (
-        !authLoading && (
-          <p className="text-sm text-muted-foreground">Admin account — no member profile, so there are no personal events.</p>
-        )
-      )}
+      </MemberOnly>
 
       {showForm && member && <CreateEventForm onClose={() => setShowForm(false)} />}
 

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 import { useSignOut } from "@/hooks/useAuth";
-import { useMemberSite } from "@/lib/queries";
+import { useMemberSite } from "@/features/site/queries";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { NavItem } from "@/lib/types";
+import type { NavItem } from "@/features/site/types";
 
 function isUnder(pathname: string, base: string | null) {
   if (!base) return false;
@@ -16,7 +16,6 @@ function isUnder(pathname: string, base: string | null) {
 }
 
 export function MemberSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const router = useRouter();
   const pathname = usePathname() ?? "";
   const signOutLocal = useSignOut();
   const site = useMemberSite();
@@ -26,8 +25,7 @@ export function MemberSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
 
   function signOut() {
-    signOutLocal();
-    router.push("/");
+    signOutLocal("/");
   }
 
   function renderLink(item: NavItem, first: boolean) {

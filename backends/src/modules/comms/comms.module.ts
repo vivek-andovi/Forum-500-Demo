@@ -31,6 +31,6 @@ import { WhatsappService } from './whatsapp.service';
     ActionsService, ActionsRepository,
     ConciergeService, ConciergeRepository,
   ],
-  exports: [IntroductionsRepository, WhatsappRepository, InboxRepository, ActionsRepository],
+  exports: [IntroductionsService, WhatsappService, InboxService, ActionsService],
 })
 export class CommsModule {}

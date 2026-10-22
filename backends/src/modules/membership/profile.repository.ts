@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PUBLISHED } from '../../core/common/member-context';
+import { approvalNotification } from '../../core/notifications/notification-data';
 import { PrismaService } from '../../core/prisma/prisma.service';
 
 type Answer = { questionId: string; answer: string };
@@ -28,9 +29,13 @@ export class ProfileRepository {
     return this.prisma.profileRevision.findFirst({ where: { memberId, status: 'pending' }, orderBy: { createdAt: 'desc' } });
   }
 
+  saveDraft(memberId: string, draft: Prisma.InputJsonValue) {
+    return this.prisma.member.update({ where: { id: memberId }, data: { profileDraft: draft } });
+  }
+
   updateProfile(memberId: string, data: Prisma.MemberUncheckedUpdateInput, answers: Answer[] = []) {
     return this.prisma.$transaction(async (tx) => {
-      await tx.member.update({ where: { id: memberId }, data });
+      await tx.member.update({ where: { id: memberId }, data: { ...data, profileDraft: Prisma.DbNull } });
       for (const a of answers) {
         await tx.memberQuestionAnswer.upsert({
           where: { memberId_questionId: { memberId, questionId: a.questionId } },
@@ -49,7 +54,8 @@ export class ProfileRepository {
         data: { status: 'rejected', reviewerNote: 'Superseded by a newer submission' },
       }),
       this.prisma.profileRevision.create({ data: { memberId, changes } }),
-      this.prisma.member.update({ where: { id: memberId }, data: { profileStatus: 'pending_review' } }),
+      // The submission replaces any saved draft.
+      this.prisma.member.update({ where: { id: memberId }, data: { profileStatus: 'pending_review', profileDraft: Prisma.DbNull } }),
     ]);
   }
 
@@ -60,7 +66,13 @@ export class ProfileRepository {
 
   approveRevision(id: string, memberId: string, changes: Prisma.MemberUncheckedUpdateInput, answers: Answer[]) {
     return this.prisma.$transaction(async (tx) => {
-      await tx.member.update({ where: { id: memberId }, data: { ...changes, isPublished: true, profileStatus: 'published' } });
+      // A member's first approved profile makes them visible in the directory. Later approvals
+      // leave isPublished alone, so a member an admin has hidden stays hidden.
+      const firstApproval = (await tx.profileRevision.count({ where: { memberId, status: 'approved' } })) === 0;
+      await tx.member.update({
+        where: { id: memberId },
+        data: { ...changes, profileStatus: 'published', ...(firstApproval && { isPublished: true }) },
+      });
       for (const a of answers) {
         await tx.memberQuestionAnswer.upsert({
           where: { memberId_questionId: { memberId, questionId: a.questionId } },
@@ -69,9 +81,8 @@ export class ProfileRepository {
         });
       }
       await tx.profileRevision.update({ where: { id }, data: { status: 'approved', reviewedAt: new Date() } });
-      await tx.notification.create({
-        data: { memberId, type: 'approval', title: 'Your profile update is live', link: '/membership/profile' },
-      });
+      // Inside the transaction so the member is only notified if the approval commits.
+      await tx.notification.create({ data: approvalNotification(memberId, 'Your profile update is live', { link: '/membership/profile' }) });
       return tx.profileRevision.findUnique({ where: { id } });
     });
   }
@@ -81,9 +92,11 @@ export class ProfileRepository {
       const rev = await tx.profileRevision.update({
         where: { id }, data: { status: 'rejected', reviewerNote: note, reviewedAt: new Date() },
       });
-      await tx.member.update({ where: { id: memberId }, data: { profileStatus: 'published' } });
+      // Back to the state before submission: live profiles stay live, unpublished ones stay drafts.
+      const m = await tx.member.findUniqueOrThrow({ where: { id: memberId }, select: { isPublished: true } });
+      await tx.member.update({ where: { id: memberId }, data: { profileStatus: m.isPublished ? 'published' : 'draft' } });
       await tx.notification.create({
-        data: { memberId, type: 'approval', title: 'Your profile update needs changes', body: note, link: '/membership/profile' },
+        data: approvalNotification(memberId, 'Your profile update needs changes', { body: note, link: '/membership/profile' }),
       });
       return rev;
     });

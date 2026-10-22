@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentMember } from "@/hooks/useAuth";
-import { useFeed, useLikePost, usePostFeed } from "@/lib/queries";
+import { useFeed, useLikePost, usePostFeed } from "@/features/media/queries";
 import { timeAgo } from "@/lib/format";
-import type { FeedPost } from "@/lib/types";
+import type { FeedPost } from "@/features/media/types";
 
 export default function NewsfeedPage() {
   const { member } = useCurrentMember();

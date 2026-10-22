@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { resourceHref } from "@/lib/meta";
+import { resourceIcon } from "@/lib/resource-registry";
 import { cn } from "@/lib/utils";
 import type { ApprovalSummary } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
-import { resourceIcon } from "@/components/layout/icons";
 
 export function ApprovalCard({ a }: { a: ApprovalSummary }) {
   const Icon = resourceIcon(a.resource);

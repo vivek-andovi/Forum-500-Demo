@@ -68,4 +68,14 @@ export class BenefitsService {
       status: 'in_review',
     });
   }
+
+  // ── Reads used by other modules (e.g. the dashboard)
+
+  featured() {
+    return this.repo.listFeatured();
+  }
+
+  optedIn(memberId: string) {
+    return this.repo.listOptedIn(memberId);
+  }
 }

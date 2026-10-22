@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Actor, AuditService } from '../../core/audit/audit.service';
-import { AuthRepository } from '../../core/auth/auth.repository';
 import { AuthService } from '../../core/auth/auth.service';
 import { InforumService } from '../media/inforum.service';
 import { ApplicationsService } from '../membership/applications.service';
@@ -19,7 +18,6 @@ export class AdminWorkflowsService {
     private readonly profiles: ProfileService,
     private readonly inforum: InforumService,
     private readonly auth: AuthService,
-    private readonly users: AuthRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -69,7 +67,7 @@ export class AdminWorkflowsService {
   // ── User account actions
 
   async sendInvite(userId: string, actor: Actor) {
-    const user = await this.users.findById(userId);
+    const user = await this.auth.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
     if (user.status === 'suspended') throw new BadRequestException('Unsuspend the user before sending an invite');
     const result = await this.auth.sendInvite(userId);
@@ -81,7 +79,7 @@ export class AdminWorkflowsService {
   }
 
   async revokeSessions(userId: string, actor: Actor) {
-    const user = await this.users.findById(userId);
+    const user = await this.auth.findUserById(userId);
     if (!user) throw new NotFoundException('User not found');
     await this.auth.revokeSessions(userId);
     await this.audit.log(actor, { action: 'revoke_sessions', entity: 'users', entityType: 'User', entityId: userId, entityLabel: user.email });

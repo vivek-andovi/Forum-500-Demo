@@ -9,15 +9,15 @@ look (Tailwind v4, Fraunces + Karla, shadcn/ui) and gets all of its data from th
 - Next.js 15.5, React 19, TypeScript, App Router with `src/`
 - Tailwind CSS v4 (`@tailwindcss/postcss`, `tw-animate-css`); the theme is in `src/app/globals.css`
 - shadcn/ui components (Radix) in `src/components/ui`
-- TanStack React Query v5 for all API access (`src/lib/queries.ts`), sonner for toasts, date-fns
+- TanStack React Query v5 for all API access (`src/features/*/queries.ts`), sonner for toasts, date-fns
 
 ## Setup
 
 ```bash
 cd frontends/web
-cp .env.example .env.local        # then edit if the API isn't on localhost:4000
+cp .env.example .env              # then edit if the API isn't on localhost:4000
 npm install                       # if the global npm cache is broken: --cache ~/.npm-cache-forum500
-npm run dev                       # http://localhost:3000
+npm run dev                       # http://localhost:3002
 ```
 
 The API (`backends/`) must be running at `NEXT_PUBLIC_API_URL`. Seeded logins:
@@ -51,20 +51,50 @@ The variable is inlined at build time, so set it in Vercel before you build.
 ```
 src/
   app/
-    (public)/          /, /about, /apply, /auth, /inforum  (SiteHeader + SiteFooter)
-    (member)/          auth-guarded member area (MemberSidebar + InforumBanner)
+    (public)/            /, /about, /apply, /auth, /inforum  (SiteHeader + SiteFooter)
+    (member)/            auth-guarded member area (MemberSidebar + InforumBanner)
+      layout.tsx         the only place that redirects on sign-out / 401 (to /auth?next=…)
       dashboard, ask-zola, membership/**, events/**, media/**, comms/**
-  components/          SiteHeader, SiteFooter, MemberSidebar, InforumBanner, EventsCalendar, PageHeader,
-                       QueryState (loading/error/empty), Avatar, ui/* (shadcn)
-  hooks/useAuth.tsx    token state, current member, sign out
+      <page>/_components/  pieces of one big page (Next ignores folders starting with "_")
+  features/              one folder per API domain, each with types.ts + queries.ts
+    auth/                login, /v1/me, password policy (password.ts)
+    membership/          members, profile, benefits, groups, applications
+    events/              events, RSVPs, venues, gallery
+    media/               In:Forum, Forecast, articles, podcasts, books, library, newsfeed, comments
+    comms/               introductions, WhatsApp, email, notifications, actions, concierge, messages
+    site/                CMS pages and copy, navigation, settings, lookups, dashboard bundle
+  components/            shared UI: SiteHeader, SiteFooter, MemberSidebar, PageHeader, QueryState, Avatar,
+                         MemberOnly, CollapsiblePanel, form.tsx (FormField + input classes), AuthCard,
+                         media/ (Byline, ArticleImage, sectionName), ui/* (shadcn)
+  hooks/useAuth.tsx      token state, current member, sign out
   lib/
-    api.ts             fetch wrapper (Bearer token, error normalisation, 401 → sign out)
-    queries.ts         one React Query hook per endpoint; mutations invalidate related queries
-    types.ts           types that mirror backends/prisma/schema.prisma
-    format.ts          date, time, money and read-time helpers (dateLabel/timeLabel are preferred when present)
-    event-calendar.ts  .ics download built from startsAt/endsAt
-public/assets/         marketing images used directly by the public pages and banners
+    api.ts               fetch wrapper (Bearer token, error normalisation, 401 → sign out)
+    query-keys.ts        every React Query key (`qk`), with the prefix overlaps documented
+    query-utils.ts       useInvalidate, POLL_MS
+    types/common.ts      shared base types (ISODate, Timestamps, ContentStatus, Visibility, …)
+    format.ts            date, time, money and read-time helpers (dateLabel/timeLabel are preferred when present)
+    event-calendar.ts    .ics download built from startsAt/endsAt
+    photo.ts             copy / download gallery photos
 ```
+
+### Where things live / how to add a page or feature
+
+- **Types and hooks** for an endpoint go in `src/features/<domain>/types.ts` and `queries.ts`; import them
+  from there (`@/features/events/queries`). Types mirror `backends/prisma/schema.prisma`.
+- **New endpoint:** add the type, add a key to `qk` in `src/lib/query-keys.ts` (check the overlap notes at the
+  top), then a `useX` hook in the domain's `queries.ts`. Mutations call `useInvalidate()` with every key they
+  affect; errors are toasted globally (`components/providers.tsx`), so pages only add a success toast.
+- **New page:** create `src/app/(member)/<area>/<name>/page.tsx` (client component). Start it with
+  `<PageHeader pageKey="<area>/<name>" …>` so CMS copy can override the header, and wrap data in
+  `<QueryState>` for loading / error / empty states. Add it to the sidebar from the admin console (navigation
+  comes from the CMS).
+- **Member-only actions:** admins can browse the member area but have no member profile. Wrap anything that
+  needs a member in `<MemberOnly member={member} message="Admin account — no member profile…">`.
+- **Big pages:** when a page grows past a few hundred lines, move sections into `<page>/_components/`. Keep
+  state and data fetching in `page.tsx` and pass it down; move a component to `src/components/` only once a
+  second page needs it.
+- **Forms:** use `FormField` / `inputClass` from `components/form.tsx` (the In:Forum dialogs use
+  `editorialFieldClass`, which is deliberately different).
 
 ### Auth
 

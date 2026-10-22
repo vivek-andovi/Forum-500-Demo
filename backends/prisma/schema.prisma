@@ -1,6 +1,9 @@
 // Forum500 — single source of truth for all data shown in the member app.
 // Conventions: uuid ids, slugs where URLs need them, `status` + publish window for
 // anything admins publish, timestamptz everywhere, money as cents + currency.
+// Audit columns on every model: createdAt/updatedAt, createdBy/updatedBy/deletedBy (free text: the app
+// writes the acting User id, but scripts/imports may write any label; null = system or a public form;
+// no FK so history survives the user) and deletedAt for soft delete. Rows are never hard-deleted by the app: see src/core/prisma/audit-trail.extension.ts.
 
 generator client {
   provider = "prisma-client-js"
@@ -200,6 +203,10 @@ model User {
   lockedUntil  DateTime?  @db.Timestamptz
   createdAt    DateTime   @default(now()) @db.Timestamptz
   updatedAt    DateTime   @updatedAt @db.Timestamptz
+  deletedAt    DateTime?  @db.Timestamptz
+  createdBy    String?
+  updatedBy    String?
+  deletedBy    String?
 
   member     Member?
   authTokens AuthToken[]
@@ -220,6 +227,11 @@ model AuthToken {
   expiresAt DateTime      @db.Timestamptz
   usedAt    DateTime?     @db.Timestamptz
   createdAt DateTime      @default(now()) @db.Timestamptz
+  updatedAt DateTime      @updatedAt @db.Timestamptz
+  deletedAt DateTime?     @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -227,14 +239,18 @@ model AuthToken {
 // ─────────────────────────── Membership ────────────────────────────
 
 model Chapter {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String   @unique
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @unique
   country         String?
-  isChapter       Boolean  @default(false) /// true = appears in directory/profile chapter list
-  whatsappEnabled Boolean  @default(true)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now()) @db.Timestamptz
-  updatedAt       DateTime @updatedAt @db.Timestamptz
+  isChapter       Boolean   @default(false) /// true = appears in directory/profile chapter list
+  whatsappEnabled Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+  deletedAt       DateTime? @db.Timestamptz
+  createdBy       String?
+  updatedBy       String?
+  deletedBy       String?
 
   members        Member[]
   events         Event[]
@@ -244,36 +260,48 @@ model Chapter {
 }
 
 model Sector {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   members Member[]
 }
 
 model MembershipTier {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
   description String?
   priceCents  Int?
-  currency    String   @default("GBP")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  currency    String    @default("GBP")
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   members Member[]
 }
 
 /// The "five questions" every member answers on their profile.
 model ProfileQuestion {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
   text      String
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   answers MemberQuestionAnswer[]
 }
@@ -303,8 +331,15 @@ model Member {
   /// Featured Q&A shown on the New Members card.
   spotlightQuestion String?
   spotlightAnswer   String?
+  /// Unsubmitted edits of a published member (ProfileInput JSON). Never shown to other members;
+  /// goes live only via "Submit for review" → ProfileRevision → admin approval.
+  profileDraft      Json?
   createdAt         DateTime      @default(now()) @db.Timestamptz
   updatedAt         DateTime      @updatedAt @db.Timestamptz
+  deletedAt         DateTime?     @db.Timestamptz
+  createdBy         String?
+  updatedBy         String?
+  deletedBy         String?
 
   user    User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   chapter Chapter?        @relation(fields: [chapterId], references: [id], onDelete: SetNull)
@@ -348,12 +383,16 @@ model Member {
 }
 
 model MemberQuestionAnswer {
-  id         String   @id @default(uuid()) @db.Uuid
-  memberId   String   @db.Uuid
-  questionId String   @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
+  memberId   String    @db.Uuid
+  questionId String    @db.Uuid
   answer     String
-  createdAt  DateTime @default(now()) @db.Timestamptz
-  updatedAt  DateTime @updatedAt @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @db.Timestamptz
+  deletedAt  DateTime? @db.Timestamptz
+  createdBy  String?
+  updatedBy  String?
+  deletedBy  String?
 
   member   Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
   question ProfileQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
@@ -363,13 +402,17 @@ model MemberQuestionAnswer {
 
 /// Long-form "new member interview" Q&A shown in the directory carousel.
 model MemberInterviewQA {
-  id        String   @id @default(uuid()) @db.Uuid
-  memberId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @db.Uuid
   question  String
   answer    String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
@@ -384,6 +427,10 @@ model ProfileRevision {
   reviewedAt   DateTime?    @db.Timestamptz
   createdAt    DateTime     @default(now()) @db.Timestamptz
   updatedAt    DateTime     @updatedAt @db.Timestamptz
+  deletedAt    DateTime?    @db.Timestamptz
+  createdBy    String?
+  updatedBy    String?
+  deletedBy    String?
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
@@ -411,6 +458,10 @@ model Application {
   decidedAt           DateTime?         @db.Timestamptz
   createdAt           DateTime          @default(now()) @db.Timestamptz
   updatedAt           DateTime          @updatedAt @db.Timestamptz
+  deletedAt           DateTime?         @db.Timestamptz
+  createdBy           String?
+  updatedBy           String?
+  deletedBy           String?
 
   recommender Member? @relation(fields: [recommenderMemberId], references: [id], onDelete: SetNull)
 }
@@ -424,6 +475,10 @@ model BenefitCategory {
   sortOrder Int         @default(0)
   createdAt DateTime    @default(now()) @db.Timestamptz
   updatedAt DateTime    @updatedAt @db.Timestamptz
+  deletedAt DateTime?   @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   offers BenefitOffer[]
 }
@@ -451,6 +506,10 @@ model BenefitOffer {
   unpublishAt      DateTime?     @db.Timestamptz
   createdAt        DateTime      @default(now()) @db.Timestamptz
   updatedAt        DateTime      @updatedAt @db.Timestamptz
+  deletedAt        DateTime?     @db.Timestamptz
+  createdBy        String?
+  updatedBy        String?
+  deletedBy        String?
 
   category       BenefitCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   providerMember Member?          @relation(fields: [providerMemberId], references: [id], onDelete: SetNull)
@@ -458,10 +517,15 @@ model BenefitOffer {
 }
 
 model BenefitOptIn {
-  id        String   @id @default(uuid()) @db.Uuid
-  memberId  String   @db.Uuid
-  offerId   String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @db.Uuid
+  offerId   String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   member Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
   offer  BenefitOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
@@ -482,6 +546,10 @@ model Group {
   sortOrder    Int           @default(0)
   createdAt    DateTime      @default(now()) @db.Timestamptz
   updatedAt    DateTime      @updatedAt @db.Timestamptz
+  deletedAt    DateTime?     @db.Timestamptz
+  createdBy    String?
+  updatedBy    String?
+  deletedBy    String?
 
   proposedBy  Member?           @relation("GroupProposer", fields: [proposedById], references: [id], onDelete: SetNull)
   memberships GroupMembership[]
@@ -494,6 +562,10 @@ model GroupMembership {
   status    MembershipRequestStatus @default(requested)
   createdAt DateTime                @default(now()) @db.Timestamptz
   updatedAt DateTime                @updatedAt @db.Timestamptz
+  deletedAt DateTime?               @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -518,6 +590,10 @@ model Venue {
   sortOrder      Int           @default(0)
   createdAt      DateTime      @default(now()) @db.Timestamptz
   updatedAt      DateTime      @updatedAt @db.Timestamptz
+  deletedAt      DateTime?     @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   events  Event[]
@@ -552,6 +628,10 @@ model Event {
   reviewNote         String?
   createdAt          DateTime      @default(now()) @db.Timestamptz
   updatedAt          DateTime      @updatedAt @db.Timestamptz
+  deletedAt          DateTime?     @db.Timestamptz
+  createdBy          String?
+  updatedBy          String?
+  deletedBy          String?
 
   chapter    Chapter?       @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   venue      Venue?         @relation(fields: [venueId], references: [id], onDelete: SetNull)
@@ -562,9 +642,15 @@ model Event {
 }
 
 model EventHost {
-  id       String @id @default(uuid()) @db.Uuid
-  eventId  String @db.Uuid
-  memberId String @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  eventId   String    @db.Uuid
+  memberId  String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -581,6 +667,10 @@ model EventRsvp {
   dietaryNote String?
   createdAt   DateTime   @default(now()) @db.Timestamptz
   updatedAt   DateTime   @updatedAt @db.Timestamptz
+  deletedAt   DateTime?  @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -602,6 +692,10 @@ model GalleryAlbum {
   sortOrder Int           @default(0)
   createdAt DateTime      @default(now()) @db.Timestamptz
   updatedAt DateTime      @updatedAt @db.Timestamptz
+  deletedAt DateTime?     @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   event   Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
   chapter Chapter?       @relation(fields: [chapterId], references: [id], onDelete: SetNull)
@@ -617,16 +711,25 @@ model GalleryPhoto {
   sortOrder Int       @default(0)
   createdAt DateTime  @default(now()) @db.Timestamptz
   updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   album GalleryAlbum     @relation(fields: [albumId], references: [id], onDelete: Cascade)
   tags  MemberPhotoTag[]
 }
 
 model MemberPhotoTag {
-  id        String   @id @default(uuid()) @db.Uuid
-  memberId  String   @db.Uuid
-  photoId   String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @db.Uuid
+  photoId   String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   member Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
   photo  GalleryPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
@@ -637,12 +740,16 @@ model MemberPhotoTag {
 // ─────────────────────────────── Media ───────────────────────────────
 
 model InforumSection {
-  id        String   @id @default(uuid()) @db.Uuid
-  key       String   @unique
+  id        String    @id @default(uuid()) @db.Uuid
+  key       String    @unique
   label     String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   articles Article[]
 }
@@ -658,15 +765,25 @@ model InforumEdition {
   visibility  Visibility    @default(members)
   createdAt   DateTime      @default(now()) @db.Timestamptz
   updatedAt   DateTime      @updatedAt @db.Timestamptz
+  deletedAt   DateTime?     @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   articles EditionArticle[]
 }
 
 model EditionArticle {
-  id        String @id @default(uuid()) @db.Uuid
-  editionId String @db.Uuid
-  articleId String @db.Uuid
-  sortOrder Int    @default(0)
+  id        String    @id @default(uuid()) @db.Uuid
+  editionId String    @db.Uuid
+  articleId String    @db.Uuid
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   edition InforumEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
   article Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
@@ -689,6 +806,10 @@ model ForecastIssue {
   status        ContentStatus @default(published)
   createdAt     DateTime      @default(now()) @db.Timestamptz
   updatedAt     DateTime      @updatedAt @db.Timestamptz
+  deletedAt     DateTime?     @db.Timestamptz
+  createdBy     String?
+  updatedBy     String?
+  deletedBy     String?
 
   articles Article[]
 }
@@ -722,6 +843,10 @@ model Article {
   publishedAt     DateTime?     @db.Timestamptz
   createdAt       DateTime      @default(now()) @db.Timestamptz
   updatedAt       DateTime      @updatedAt @db.Timestamptz
+  deletedAt       DateTime?     @db.Timestamptz
+  createdBy       String?
+  updatedBy       String?
+  deletedBy       String?
 
   section       InforumSection?  @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   forecastIssue ForecastIssue?   @relation(fields: [forecastIssueId], references: [id], onDelete: SetNull)
@@ -743,6 +868,10 @@ model Pitch {
   articleId String?      @db.Uuid
   createdAt DateTime     @default(now()) @db.Timestamptz
   updatedAt DateTime     @updatedAt @db.Timestamptz
+  deletedAt DateTime?    @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   member  Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
   article Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
@@ -762,6 +891,10 @@ model Recommendation {
   status         ContentStatus          @default(published)
   createdAt      DateTime               @default(now()) @db.Timestamptz
   updatedAt      DateTime               @updatedAt @db.Timestamptz
+  deletedAt      DateTime?              @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
 }
@@ -780,6 +913,10 @@ model Comment {
   status         ContentStatus @default(published)
   createdAt      DateTime      @default(now()) @db.Timestamptz
   updatedAt      DateTime      @updatedAt @db.Timestamptz
+  deletedAt      DateTime?     @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   parent      Comment?           @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies     Comment[]          @relation("CommentReplies")
@@ -788,10 +925,15 @@ model Comment {
 }
 
 model CommentRecommend {
-  id        String   @id @default(uuid()) @db.Uuid
-  commentId String   @db.Uuid
-  memberId  String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  commentId String    @db.Uuid
+  memberId  String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
   member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -816,6 +958,10 @@ model PodcastEpisode {
   publishedAt     DateTime?     @db.Timestamptz
   createdAt       DateTime      @default(now()) @db.Timestamptz
   updatedAt       DateTime      @updatedAt @db.Timestamptz
+  deletedAt       DateTime?     @db.Timestamptz
+  createdBy       String?
+  updatedBy       String?
+  deletedBy       String?
 
   guestMember Member? @relation(fields: [guestMemberId], references: [id], onDelete: SetNull)
 }
@@ -834,6 +980,10 @@ model Book {
   sortOrder      Int           @default(0)
   createdAt      DateTime      @default(now()) @db.Timestamptz
   updatedAt      DateTime      @updatedAt @db.Timestamptz
+  deletedAt      DateTime?     @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   authorMember    Member?              @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
   recommendations BookRecommendation[]
@@ -854,6 +1004,10 @@ model BookRecommendation {
   sortOrder         Int           @default(0)
   createdAt         DateTime      @default(now()) @db.Timestamptz
   updatedAt         DateTime      @updatedAt @db.Timestamptz
+  deletedAt         DateTime?     @db.Timestamptz
+  createdBy         String?
+  updatedBy         String?
+  deletedBy         String?
 
   book          Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
   recommendedBy Member? @relation(fields: [recommendedById], references: [id], onDelete: SetNull)
@@ -872,6 +1026,10 @@ model LibraryItem {
   publishedAt DateTime?     @db.Timestamptz
   createdAt   DateTime      @default(now()) @db.Timestamptz
   updatedAt   DateTime      @updatedAt @db.Timestamptz
+  deletedAt   DateTime?     @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 }
 
 model FeedPost {
@@ -888,16 +1046,25 @@ model FeedPost {
   status         ContentStatus @default(published)
   createdAt      DateTime      @default(now()) @db.Timestamptz
   updatedAt      DateTime      @updatedAt @db.Timestamptz
+  deletedAt      DateTime?     @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   member  Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
   likedBy FeedLike[]
 }
 
 model FeedLike {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  memberId  String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  postId    String    @db.Uuid
+  memberId  String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   post   FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   member Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -918,6 +1085,10 @@ model Introduction {
   respondedAt    DateTime?          @db.Timestamptz
   createdAt      DateTime           @default(now()) @db.Timestamptz
   updatedAt      DateTime           @updatedAt @db.Timestamptz
+  deletedAt      DateTime?          @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   requester  Member? @relation("IntroRequester", fields: [requesterId], references: [id], onDelete: SetNull)
   target     Member  @relation("IntroTarget", fields: [targetId], references: [id], onDelete: Cascade)
@@ -925,15 +1096,19 @@ model Introduction {
 }
 
 model WhatsappGroup {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  chapterId   String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  chapterId   String?   @db.Uuid
   inviteLink  String?
-  moderatorId String?  @db.Uuid
-  active      Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  moderatorId String?   @db.Uuid
+  active      Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   chapter     Chapter?             @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   moderator   Member?              @relation("WhatsappModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
@@ -948,6 +1123,10 @@ model WhatsappMembership {
   status    MembershipRequestStatus @default(requested)
   createdAt DateTime                @default(now()) @db.Timestamptz
   updatedAt DateTime                @updatedAt @db.Timestamptz
+  deletedAt DateTime?               @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   group  WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   member Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -967,6 +1146,10 @@ model EmailCampaign {
   sentAt      DateTime?      @db.Timestamptz
   createdAt   DateTime       @default(now()) @db.Timestamptz
   updatedAt   DateTime       @updatedAt @db.Timestamptz
+  deletedAt   DateTime?      @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   deliveries EmailDelivery[]
 }
@@ -977,6 +1160,11 @@ model EmailDelivery {
   memberId   String    @db.Uuid
   openedAt   DateTime? @db.Timestamptz
   createdAt  DateTime  @default(now()) @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @db.Timestamptz
+  deletedAt  DateTime? @db.Timestamptz
+  createdBy  String?
+  updatedBy  String?
+  deletedBy  String?
 
   campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   member   Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -994,6 +1182,10 @@ model Notification {
   readAt    DateTime?        @db.Timestamptz
   createdAt DateTime         @default(now()) @db.Timestamptz
   updatedAt DateTime         @updatedAt @db.Timestamptz
+  deletedAt DateTime?        @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
@@ -1013,6 +1205,10 @@ model ActionItem {
   completedAt DateTime?     @db.Timestamptz
   createdAt   DateTime      @default(now()) @db.Timestamptz
   updatedAt   DateTime      @updatedAt @db.Timestamptz
+  deletedAt   DateTime?     @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
@@ -1026,6 +1222,10 @@ model ConciergeRequest {
   adminReply String?
   createdAt  DateTime        @default(now()) @db.Timestamptz
   updatedAt  DateTime        @updatedAt @db.Timestamptz
+  deletedAt  DateTime?       @db.Timestamptz
+  createdBy  String?
+  updatedBy  String?
+  deletedBy  String?
 
   member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
 }
@@ -1053,6 +1253,10 @@ model Page {
   status          ContentStatus @default(published)
   createdAt       DateTime      @default(now()) @db.Timestamptz
   updatedAt       DateTime      @updatedAt @db.Timestamptz
+  deletedAt       DateTime?     @db.Timestamptz
+  createdBy       String?
+  updatedBy       String?
+  deletedBy       String?
 }
 
 enum NavMenu {
@@ -1063,19 +1267,23 @@ enum NavMenu {
 
 /// Admin-managed navigation (member sidebar hubs, public header and footer links).
 model NavItem {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
   menu      NavMenu
-  parentId  String?  @db.Uuid
+  parentId  String?   @db.Uuid
   label     String
   href      String?
   /// lucide icon name, e.g. "Users", "CalendarDays"
   icon      String?
   /// Highlighted entry (e.g. Ask Zola).
-  highlight Boolean  @default(false)
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  highlight Boolean   @default(false)
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 
   parent   NavItem?  @relation("NavTree", fields: [parentId], references: [id], onDelete: Cascade)
   children NavItem[] @relation("NavTree")
@@ -1083,52 +1291,68 @@ model NavItem {
 
 /// Cards and tiles on public pages, e.g. the "Engage with Forum" grid on the home page.
 model ContentCard {
-  id          String   @id @default(uuid()) @db.Uuid
-  placement   String   @default("home_engage")
+  id          String    @id @default(uuid()) @db.Uuid
+  placement   String    @default("home_engage")
   title       String
   description String?
   icon        String?
   href        String?
   imageUrl    String?
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 }
 
 /// "Member Benefits" list on the public About page.
 model ClubBenefit {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   title       String
   description String
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 }
 
 /// Quick-prompt chips on the Ask Zola page.
 model QuickPrompt {
-  id        String   @id @default(uuid()) @db.Uuid
-  key       String   @unique
+  id        String    @id @default(uuid()) @db.Uuid
+  key       String    @unique
   label     String
-  template  String   @default("")
+  template  String    @default("")
   icon      String?
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 }
 
 // ─────────────────────────── Direct messages ───────────────────────────
 
 model Conversation {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
   /// Sorted "memberA:memberB" for 1:1 conversations, so each pair has exactly one thread.
-  pairKey       String?  @unique
-  lastMessageAt DateTime @default(now()) @db.Timestamptz
-  createdAt     DateTime @default(now()) @db.Timestamptz
-  updatedAt     DateTime @updatedAt @db.Timestamptz
+  pairKey       String?   @unique
+  lastMessageAt DateTime  @default(now()) @db.Timestamptz
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
+  deletedAt     DateTime? @db.Timestamptz
+  createdBy     String?
+  updatedBy     String?
+  deletedBy     String?
 
   participants ConversationParticipant[]
   messages     Message[]
@@ -1140,6 +1364,11 @@ model ConversationParticipant {
   memberId       String    @db.Uuid
   lastReadAt     DateTime? @db.Timestamptz
   createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
+  deletedAt      DateTime? @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   member       Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -1148,11 +1377,16 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String   @id @default(uuid()) @db.Uuid
-  conversationId String   @db.Uuid
-  senderId       String?  @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @db.Uuid
+  senderId       String?   @db.Uuid
   body           String
-  createdAt      DateTime @default(now()) @db.Timestamptz
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
+  deletedAt      DateTime? @db.Timestamptz
+  createdBy      String?
+  updatedBy      String?
+  deletedBy      String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       Member?      @relation(fields: [senderId], references: [id], onDelete: SetNull)
@@ -1170,6 +1404,10 @@ model WhatsappMessage {
   status     ContentStatus @default(published)
   createdAt  DateTime      @default(now()) @db.Timestamptz
   updatedAt  DateTime      @updatedAt @db.Timestamptz
+  deletedAt  DateTime?     @db.Timestamptz
+  createdBy  String?
+  updatedBy  String?
+  deletedBy  String?
 
   group  WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   member Member?       @relation(fields: [memberId], references: [id], onDelete: SetNull)
@@ -1178,28 +1416,39 @@ model WhatsappMessage {
 }
 
 model Setting {
-  key       String   @id
+  id        String    @id @default(uuid()) @db.Uuid
+  key       String    @unique
   value     Json
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
 }
 
 model Asset {
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
   url        String
   storageKey String
   /// "local" (dev disk) or "s3".
-  driver     String   @default("local")
+  driver     String    @default("local")
   filename   String
   mime       String
   size       Int
-  uploadedBy String?  @db.Uuid
-  createdAt  DateTime @default(now()) @db.Timestamptz
+  uploadedBy String?   @db.Uuid
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @db.Timestamptz
+  deletedAt  DateTime? @db.Timestamptz
+  createdBy  String?
+  updatedBy  String?
+  deletedBy  String?
 }
 
 /// Human-readable record of every admin change: who did what to which record.
 model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  actorId     String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  actorId     String?   @db.Uuid
   /// Snapshot of the actor at the time (kept even if the user is later deleted).
   actorEmail  String?
   actorName   String?
@@ -1216,7 +1465,12 @@ model AuditLog {
   /// Field-level changes: [{ field, label, from, to }].
   changes     Json?
   ip          String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  deletedAt   DateTime? @db.Timestamptz
+  createdBy   String?
+  updatedBy   String?
+  deletedBy   String?
 
   @@index([entity, entityId])
   @@index([createdAt])

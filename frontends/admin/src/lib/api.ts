@@ -1,4 +1,4 @@
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api").replace(
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api").replace(
   /\/$/,
   "",
 );
@@ -42,7 +42,7 @@ export function onUnauthorized(handler: (() => void) | null) {
 
 export type QueryValue = string | number | boolean | null | undefined;
 
-export function buildQuery(query?: Record<string, QueryValue>): string {
+function buildQuery(query?: Record<string, QueryValue>): string {
   if (!query) return "";
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) {

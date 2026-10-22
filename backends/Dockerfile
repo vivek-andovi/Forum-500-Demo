@@ -26,5 +26,7 @@ COPY --chown=node:node package.json ./
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD sh -c "wget -qO- http://localhost:\${PORT:-4000}/api/health || exit 1"
-# Apply pending migrations (idempotent), seed initial data if empty, then start the server.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed && node dist/main"]
+# Apply pending migrations (idempotent), then start the server.
+# SEED_ON_START=1 (demo hosts like Railway only) also loads the demo seed when the DB has no users.
+# Never set it in production: the seed creates admin@forum500.club with a known password.
+CMD ["sh", "-c", "npx prisma migrate deploy && if [ \"$SEED_ON_START\" = 1 ]; then npm run db:seed; fi && node dist/main"]

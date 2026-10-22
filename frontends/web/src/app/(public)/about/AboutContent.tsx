@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePublicPage, usePublicSite } from "@/lib/queries";
+import { usePublicPage, usePublicSite } from "@/features/site/queries";
 import { paragraphs } from "@/lib/format";
 
 export function AboutContent() {
