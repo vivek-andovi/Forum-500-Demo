@@ -94,3 +94,24 @@ export function paragraphs(body: string | null | undefined): string[] {
     .map((p) => p.trim())
     .filter(Boolean);
 }
+
+/**
+ * Groups podcast episodes by series, newest series first ("Series 4" … "Series 1", then any without
+ * a series). Returns a single untitled group when no episode has a series.
+ */
+export function groupBySeries<T extends { series: number | null }>(
+  episodes: T[],
+): { key: string; title: string | null; episodes: T[] }[] {
+  if (!episodes.some((e) => e.series != null)) return [{ key: "all", title: null, episodes }];
+  const numbers = [...new Set(episodes.map((e) => e.series).filter((s): s is number => s != null))].sort(
+    (a, b) => b - a,
+  );
+  const groups = numbers.map((n) => ({
+    key: `series-${n}`,
+    title: `Series ${n}`,
+    episodes: episodes.filter((e) => e.series === n),
+  }));
+  const rest = episodes.filter((e) => e.series == null);
+  if (rest.length) groups.push({ key: "other", title: "Other episodes", episodes: rest });
+  return groups;
+}

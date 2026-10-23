@@ -15,7 +15,10 @@ export class PublicationsRepository {
   }
 
   listPodcasts(take?: number) {
-    return this.prisma.podcastEpisode.findMany({ where: PUBLISHED, orderBy: { number: 'desc' }, take });
+    // Newest series first, then newest episode (episodes without a series keep the old number order).
+    return this.prisma.podcastEpisode.findMany({
+      where: PUBLISHED, orderBy: [{ series: { sort: 'desc', nulls: 'last' } }, { number: 'desc' }], take,
+    });
   }
 
   listMemberBooks() {

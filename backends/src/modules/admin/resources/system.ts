@@ -31,4 +31,12 @@ export const SYSTEM_RESOURCES: ResourceConfig[] = [
     readOnly: true,
     defaultSort: { field: 'createdAt', order: 'desc' },
   },
+  {
+    name: 'legacy-map', model: 'LegacyMap', label: 'Import Map (WordPress)', singular: 'Import Map Entry', group: 'System',
+    labelField: 'legacyId',
+    listColumns: ['entity', 'legacyId', 'model', 'newId', 'oldUrl', 'newUrl'],
+    searchFields: ['entity', 'legacyId', 'oldUrl', 'newId'],
+    readOnly: true,
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
 ];

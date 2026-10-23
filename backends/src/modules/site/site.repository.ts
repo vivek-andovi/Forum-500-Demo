@@ -38,6 +38,10 @@ export class SiteRepository {
     return this.prisma.clubBenefit.findMany({ where: { active: true }, orderBy: { sortOrder: 'asc' } });
   }
 
+  findLegacyRedirect(paths: string[]) {
+    return this.prisma.legacyMap.findFirst({ where: { oldUrl: { in: paths }, newUrl: { not: null } }, select: { newUrl: true } });
+  }
+
   findSetting(key: string) {
     return this.prisma.setting.findUnique({ where: { key } });
   }

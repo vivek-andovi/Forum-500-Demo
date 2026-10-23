@@ -10,8 +10,13 @@ export class MembersController {
   constructor(private readonly members: MembersService) {}
 
   @Get()
-  list(@Query('search') search?: string, @Query('sectorId') sectorId?: string, @Query('chapterId') chapterId?: string) {
-    return this.members.list({ search, sectorId, chapterId });
+  list(
+    @Query('search') search?: string,
+    @Query('sectorId') sectorId?: string,
+    @Query('chapterId') chapterId?: string,
+    @Query('interest') interest?: string,
+  ) {
+    return this.members.list({ search, sectorId, chapterId, interest });
   }
 
   @Get('new')

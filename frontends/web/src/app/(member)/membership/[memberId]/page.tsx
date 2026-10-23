@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Linkedin, MessageSquare } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Linkedin, MessageSquare } from "lucide-react";
 import { MemberAvatar } from "@/components/Avatar";
 import { QueryState } from "@/components/QueryState";
 import { useMember } from "@/features/membership/queries";
 import { useCurrentMember } from "@/hooks/useAuth";
 import { ApiError } from "@/lib/api";
+import { paragraphs } from "@/lib/format";
+import type { Sector } from "@/features/membership/types";
 
 export default function MemberProfilePage() {
   const { memberId } = useParams<{ memberId: string }>();
@@ -29,9 +31,21 @@ export default function MemberProfilePage() {
   }
   if (!member) return null;
 
-  const role = [member.headline, member.company].filter(Boolean).join(", ");
+  const role = [member.headline, member.company].filter(Boolean).join(", ") || member.positionLine || "";
   const eyebrow = [member.chapter?.name, member.sector?.name].filter(Boolean).join(" · ");
   const answers = (member.answers ?? []).filter((a) => a.answer?.trim());
+  const interviews = [...(member.interviews ?? [])]
+    .filter((qa) => qa.answer?.trim())
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  // Primary sector first, then the rest in their saved order, without duplicates.
+  const sectors: Pick<Sector, "id" | "name">[] = [];
+  for (const s of [
+    member.sector,
+    ...[...(member.sectors ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((ms) => ms.sector),
+  ]) {
+    if (s && !sectors.some((x) => x.id === s.id)) sectors.push(s);
+  }
+  const firstName = member.fullName.split(/\s+/)[0];
 
   return (
     <div className="space-y-8">
@@ -41,12 +55,51 @@ export default function MemberProfilePage() {
       <div className="grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h1 className="mt-2 font-display text-4xl font-semibold">{member.fullName}</h1>
+          <h1 className="mt-2 flex items-center gap-2 font-display text-4xl font-semibold">
+            {member.fullName}
+            {member.verified && (
+              <span title="Verified member" className="inline-flex shrink-0">
+                <BadgeCheck className="h-6 w-6 text-accent" aria-hidden />
+                <span className="sr-only">Verified member</span>
+              </span>
+            )}
+          </h1>
           {role && <p className="mt-2 text-lg text-muted-foreground">{role}</p>}
+          {member.companyDescription && (
+            <p className="mt-1 text-sm italic text-muted-foreground">{member.companyDescription}</p>
+          )}
+          {sectors.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {sectors.map((s) => (
+                <span key={s.id} className="rounded-full border border-border bg-card px-3 py-1 text-sm">{s.name}</span>
+              ))}
+            </div>
+          )}
           {member.bio && (
             <div className="mt-8">
               <h2 className="rule-top font-display text-xl font-medium">About</h2>
-              <p className="mt-4 leading-relaxed text-foreground/85">{member.bio}</p>
+              <div className="mt-4 space-y-4 leading-relaxed text-foreground/85">
+                {paragraphs(member.bio).map((p, i) => (
+                  <p key={i} className="whitespace-pre-line">{p}</p>
+                ))}
+              </div>
+            </div>
+          )}
+          {interviews.length > 0 && (
+            <div className="mt-8">
+              <h2 className="rule-top font-display text-xl font-medium">Five minutes with {firstName}</h2>
+              <div className="mt-4 space-y-5">
+                {interviews.map((qa) => (
+                  <div key={qa.id}>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">{qa.question}</p>
+                    <div className="mt-1 space-y-2 font-display text-base italic leading-relaxed">
+                      {paragraphs(qa.answer).map((p, i) => (
+                        <p key={i} className="whitespace-pre-line">{p}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {answers.length > 0 && (
@@ -102,8 +155,11 @@ export default function MemberProfilePage() {
               {member.chapter?.name && (
                 <div><dt className="text-muted-foreground">Chapter</dt><dd className="font-medium">{member.chapter.name}</dd></div>
               )}
-              {member.sector?.name && (
-                <div><dt className="text-muted-foreground">Sector</dt><dd className="font-medium">{member.sector.name}</dd></div>
+              {sectors.length > 0 && (
+                <div>
+                  <dt className="text-muted-foreground">Sector</dt>
+                  <dd className="font-medium">{sectors[0].name}</dd>
+                </div>
               )}
             </dl>
             {member.linkedinUrl && (

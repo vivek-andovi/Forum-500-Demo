@@ -39,6 +39,12 @@ export const MEMBERSHIP_RESOURCES: ResourceConfig[] = [
     defaultSort: { field: 'sortOrder', order: 'asc' },
   },
   {
+    name: 'member-sectors', model: 'MemberSector', label: 'Member Sectors', singular: 'Member Sector', group: 'Membership',
+    listColumns: ['memberId', 'sectorId', 'sortOrder'],
+    searchFields: [],
+    defaultSort: { field: 'sortOrder', order: 'asc' },
+  },
+  {
     name: 'member-answers', model: 'MemberQuestionAnswer', label: 'Five Questions Answers', singular: 'Answer', group: 'Membership',
     listColumns: ['memberId', 'questionId', 'answer'],
     searchFields: ['answer'],

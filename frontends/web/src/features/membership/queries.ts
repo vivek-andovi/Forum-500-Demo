@@ -37,7 +37,9 @@ export const useMembers = (f: MemberFilters = {}) =>
   useQuery({
     queryKey: qk.members(f),
     queryFn: () =>
-      api<Member[]>("/v1/members", { query: { search: f.search, sectorId: f.sectorId, chapterId: f.chapterId } }),
+      api<Member[]>("/v1/members", {
+        query: { search: f.search, sectorId: f.sectorId, chapterId: f.chapterId, interest: f.interest },
+      }),
     placeholderData: (prev) => prev,
   });
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MembershipModule } from '../membership/membership.module';
+import { SiteModule } from '../site/site.module';
 import { ActionsController } from './actions.controller';
 import { ActionsRepository } from './actions.repository';
 import { ActionsService } from './actions.service';
@@ -21,7 +22,7 @@ import { WhatsappService } from './whatsapp.service';
 
 /** Communications hub: introductions, WhatsApp groups & chat, direct messages, emails, notifications, actions, Ask Zola. */
 @Module({
-  imports: [MembershipModule],
+  imports: [MembershipModule, SiteModule],
   controllers: [IntroductionsController, WhatsappController, MessagesController, InboxController, ActionsController, ConciergeController],
   providers: [
     IntroductionsService, IntroductionsRepository,

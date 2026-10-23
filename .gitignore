@@ -7,3 +7,7 @@ dist
 *.tsbuildinfo
 backends/uploads/*
 !backends/uploads/.gitkeep
+
+# WordPress import reports (contain member data)
+backends/wp-import-report/
+backends/.dist-wptest/

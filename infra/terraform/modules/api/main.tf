@@ -132,7 +132,7 @@ locals {
     ASSET_PUBLIC_BASE_URL = var.asset_public_base_url
     MAIL_DRIVER           = "ses"
     MAIL_FROM             = "Forum500 <${var.mail_from_address}>"
-    JWT_EXPIRES_IN        = "1d"
+    JWT_EXPIRES_IN        = "60d"
     RATE_LIMIT_PER_MINUTE = tostring(var.rate_limit_per_minute)
     TRUST_PROXY           = "true"
   }

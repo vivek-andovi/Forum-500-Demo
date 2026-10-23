@@ -57,7 +57,12 @@ export class StorageService {
   }
 
   async put(body: Buffer, mime: string, folder?: string): Promise<StoredFile> {
-    const key = this.newKey(mime, folder);
+    return this.putAt(this.newKey(mime, folder), body, mime);
+  }
+
+  /** Write to a fixed key (overwriting). Used by imports, so re-running reuses the same files. */
+  async putAt(key: string, body: Buffer, mime: string): Promise<StoredFile> {
+    if (key.includes('..') || key.startsWith('/')) throw new Error(`Invalid storage key: ${key}`);
     if (this.s3) {
       await this.s3.send(
         new PutObjectCommand({

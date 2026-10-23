@@ -10,6 +10,8 @@
 import type { ComponentType } from "react";
 import {
   Activity,
+  ArrowRightLeft,
+  AtSign,
   Award,
   BadgeCheck,
   Bell,
@@ -84,6 +86,8 @@ const RESOURCES: Record<string, ResourceConfig> = {
   members: {
     icon: Users,
     related: [
+      { resource: "member-sectors", fk: "memberId", label: "Sectors" },
+      { resource: "member-interviews", fk: "memberId", label: "Interview" },
       { resource: "event-rsvps", fk: "memberId", label: "RSVPs" },
       { resource: "group-memberships", fk: "memberId", label: "Groups" },
       { resource: "benefit-opt-ins", fk: "memberId", label: "Benefit opt-ins" },
@@ -95,6 +99,7 @@ const RESOURCES: Record<string, ResourceConfig> = {
   "profile-revisions": { icon: FileClock, Extras: RevisionReview, hideForm: true },
   "member-interviews": { icon: Mic2 },
   "member-answers": { icon: HelpCircle },
+  "member-sectors": { icon: Tags },
   "benefit-offers": {
     icon: Gift,
     related: [{ resource: "benefit-opt-ins", fk: "offerId", label: "Opt-ins" }],
@@ -157,6 +162,8 @@ const RESOURCES: Record<string, ResourceConfig> = {
   "whatsapp-memberships": { icon: UserCheck },
   "whatsapp-messages": { icon: MessagesSquare },
   "email-campaigns": { icon: Mail },
+  subscribers: { icon: AtSign },
+  "direct-messages": { icon: MessagesSquare },
   notifications: { icon: Bell },
   "action-items": { icon: CheckSquare },
   "concierge-requests": { icon: Sparkles },
@@ -183,6 +190,7 @@ const RESOURCES: Record<string, ResourceConfig> = {
   users: { icon: UserCog, Extras: UserActions },
   assets: { icon: Paperclip },
   "audit-logs": { icon: Activity, Extras: AuditDetail, hideForm: true },
+  "legacy-map": { icon: ArrowRightLeft },
 };
 
 export function resourceConfig(name: string): ResourceConfig {

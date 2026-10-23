@@ -48,6 +48,18 @@ export class AuthRepository {
     return this.prisma.authToken.findUnique({ where: { tokenHash } });
   }
 
+  /** Mark a magic sign-in token used and record the login, in one transaction. */
+  consumeMagicToken(tokenId: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.authToken.update({ where: { id: tokenId }, data: { usedAt: new Date() } });
+      return tx.user.update({
+        where: { id: userId },
+        data: { status: 'active', failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() },
+        include: { member: true },
+      });
+    });
+  }
+
   /** Mark the token used and set the new password in one transaction. */
   consumeTokenAndSetPassword(tokenId: string, userId: string, passwordHash: string) {
     return this.prisma.$transaction(async (tx) => {

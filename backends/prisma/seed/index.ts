@@ -3,6 +3,11 @@
  * Seeds the database with every piece of content from the Lovable prototype so the
  * new apps render identically on day one. Destructive: truncates all tables first.
  * Run with `npm run db:seed`.
+ *
+ * SEED_PROFILE=site seeds only what the apps need to run (settings, CMS pages, navigation,
+ * membership tiers, profile questions, In:Forum sections): no admin login, chapters,
+ * sectors, demo members or demo content. Used before importing real data (the WordPress
+ * import brings its own chapters and sectors; create the admin with scripts/create-admin.mjs).
  */
 import 'dotenv/config';
 import { PrismaClient, VenueCategory } from '@prisma/client';
@@ -15,6 +20,7 @@ import pageHeaders from './data/page-headers.json';
 import * as W from './data/site-content';
 
 const prisma = new PrismaClient();
+const SITE_ONLY = process.env.SEED_PROFILE === 'site';
 const ASSET = (f: string) => `${process.env.PUBLIC_API_URL ?? 'http://localhost:4000'}/static/assets/${f}`;
 
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
@@ -55,6 +61,18 @@ function parseMoney(amount?: string): { amountCents: number | null; currency: st
   if (!amount) return { amountCents: null, currency: null };
   const currency = amount.includes('£') ? 'GBP' : amount.includes('€') ? 'EUR' : 'USD';
   return { amountCents: Math.round(Number(amount.replace(/[^0-9.]/g, '')) * 100), currency };
+}
+
+async function seedInforumSections() {
+  const sections = new Map<string, string>();
+  for (const [i, s] of I.inforumSections.entries()) {
+    sections.set(s.id, (await prisma.inforumSection.create({ data: { key: s.id, label: s.label, sortOrder: i } })).id);
+  }
+  for (const s of [{ id: 'editors-choice', label: "Editor's choice" }, { id: 'around-the-world', label: 'From around the world' }, { id: 'by-members', label: 'By members' }]) {
+    // Pseudo-sections used by the pitch form; kept for pitch → article mapping.
+    sections.set(s.id, (await prisma.inforumSection.create({ data: { key: s.id, label: s.label, sortOrder: 100 + sections.size } })).id);
+  }
+  return sections;
 }
 
 async function truncateAll() {
@@ -100,7 +118,7 @@ async function main() {
   const memberPassword = await argon2.hash(process.env.SEED_MEMBER_PASSWORD ?? 'Member@12345');
 
   // ── Admin
-  await prisma.user.create({
+  if (!SITE_ONLY) await prisma.user.create({
     data: {
       email: process.env.SEED_ADMIN_EMAIL ?? 'admin@forum500.club',
       passwordHash: await argon2.hash(process.env.SEED_ADMIN_PASSWORD ?? 'Admin@12345'),
@@ -112,7 +130,7 @@ async function main() {
   // ── Configuration
   const chapterNames = new Set<string>([...F.cities, ...F.whatsappGroups, 'Nassau', 'Paris']);
   const chapters = new Map<string, string>();
-  for (const name of [...chapterNames].sort()) {
+  for (const name of SITE_ONLY ? [] : [...chapterNames].sort()) {
     const c = await prisma.chapter.create({
       data: {
         name,
@@ -124,7 +142,7 @@ async function main() {
     chapters.set(name, c.id);
   }
   const sectors = new Map<string, string>();
-  for (const [i, name] of F.sectors.entries()) {
+  for (const [i, name] of (SITE_ONLY ? [] : F.sectors).entries()) {
     sectors.set(name, (await prisma.sector.create({ data: { name, sortOrder: i } })).id);
   }
   const fullTier = await prisma.membershipTier.create({
@@ -178,6 +196,11 @@ async function main() {
   }
   for (const [i, q] of W.quickPrompts.entries()) {
     await prisma.quickPrompt.create({ data: { ...q, sortOrder: i } });
+  }
+  if (SITE_ONLY) {
+    await seedInforumSections();
+    console.log('Site-only seed complete: settings, pages, navigation, tiers, profile questions, In:Forum sections.');
+    return;
   }
 
   // ── Members (prototype directory + current user + new-member spotlights)
@@ -355,14 +378,7 @@ async function main() {
   }
 
   // ── In:Forum
-  const sections = new Map<string, string>();
-  for (const [i, s] of I.inforumSections.entries()) {
-    sections.set(s.id, (await prisma.inforumSection.create({ data: { key: s.id, label: s.label, sortOrder: i } })).id);
-  }
-  for (const s of [{ id: 'editors-choice', label: "Editor's choice" }, { id: 'around-the-world', label: 'From around the world' }, { id: 'by-members', label: 'By members' }]) {
-    // Pseudo-sections used by the pitch form; kept for pitch → article mapping.
-    sections.set(s.id, (await prisma.inforumSection.create({ data: { key: s.id, label: s.label, sortOrder: 100 + sections.size } })).id);
-  }
+  const sections = await seedInforumSections();
   const articles = new Map<string, string>();
   async function upsertInforumArticle(a: (typeof I.inforumArticles)[number], order: number) {
     if (articles.has(a.id)) return articles.get(a.id)!;

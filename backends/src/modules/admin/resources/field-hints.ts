@@ -9,5 +9,5 @@ export const TEXT_FIELDS = new Set([
 /** URL fields that are not images. */
 export const LINK_FIELDS = new Set([
   'linkedinUrl', 'spotifyUrl', 'appleUrl', 'buyUrl', 'inviteLink', 'fileUrl', 'pdfUrl',
-  'audioUrl', 'documentUrl', 'link', 'href', 'ctaHref',
+  'audioUrl', 'documentUrl', 'link', 'href', 'ctaHref', 'mediaUrl', 'oldUrl', 'newUrl',
 ]);

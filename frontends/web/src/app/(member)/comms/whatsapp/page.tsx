@@ -77,6 +77,7 @@ export default function WhatsAppGroupsPage() {
   const { data, isLoading, error } = useWhatsapp();
   const join = useJoinWhatsapp();
 
+  const openAccess = !!data?.openAccess;
   const groups = useMemo(() => data?.groups ?? [], [data]);
   const memberships = useMemo(() => data?.memberships ?? [], [data]);
   const membershipFor = useMemo(() => {
@@ -226,7 +227,16 @@ export default function WhatsAppGroupsPage() {
                       <h3 className="font-display text-lg font-medium">{g.name}</h3>
                       <p className="text-sm text-muted-foreground">{g.chapter?.name ?? "Chapter group"}</p>
                     </div>
-                    {pending ? (
+                    {openAccess && g.inviteLink ? (
+                      <a
+                        href={g.inviteLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex shrink-0 items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                      >
+                        <ExternalLink className="h-4 w-4" /> Join on WhatsApp
+                      </a>
+                    ) : pending ? (
                       <span className="flex shrink-0 items-center gap-2 rounded-md border border-border px-3.5 py-2 text-sm font-medium text-muted-foreground">
                         <Clock className="h-4 w-4" /> Request pending
                       </span>
@@ -252,7 +262,9 @@ export default function WhatsAppGroupsPage() {
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            Groups are moderated by chapter hosts. Join requests are approved against your member profile.
+            {openAccess
+              ? "Groups are moderated by chapter hosts. Join any group directly in WhatsApp."
+              : "Groups are moderated by chapter hosts. Join requests are approved against your member profile."}
           </p>
         </div>
       </QueryState>

@@ -6,8 +6,8 @@ import { MembersRepository } from './members.repository';
 export class MembersService {
   constructor(private readonly repo: MembersRepository) {}
 
-  list(filter: { search?: string; sectorId?: string; chapterId?: string }) {
-    return this.repo.listPublished({ ...filter, search: filter.search?.slice(0, 100) });
+  list(filter: { search?: string; sectorId?: string; chapterId?: string; interest?: string }) {
+    return this.repo.listPublished({ ...filter, search: filter.search?.slice(0, 100), interest: filter.interest?.slice(0, 100) });
   }
 
   newMembers() {

@@ -20,3 +20,8 @@ export interface MeResponse {
   member: Member | null;
   pendingRevision?: ProfileRevision | null;
 }
+
+export interface MagicLinkResponse {
+  ok: boolean;
+  message: string;
+}

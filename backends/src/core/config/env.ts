@@ -15,7 +15,8 @@ const EnvSchema = z
     PORT: z.coerce.number().int().default(4000),
     DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(1),
-    JWT_EXPIRES_IN: z.string().default('1d'),
+    /** Session length. 60 days matches the old forum.club site ("remember me" for 60 days). */
+    JWT_EXPIRES_IN: z.string().default('60d'),
     CORS_ORIGINS: z.string().default('http://localhost:3001,http://localhost:3002'),
     PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
     /** Member app URL, used in invite / reset links. */

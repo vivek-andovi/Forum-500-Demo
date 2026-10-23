@@ -13,6 +13,7 @@ export interface MemberFilters {
   search?: string;
   sectorId?: string;
   chapterId?: string;
+  interest?: string;
 }
 
 export const qk = {

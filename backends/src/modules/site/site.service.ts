@@ -31,6 +31,16 @@ const DEFAULT_SITE = {
   copyright: 'Forum500. All rights reserved.',
 };
 
+/** Behaviour switches stored in the `features` setting (admin → Settings). */
+const DEFAULT_FEATURES = {
+  /**
+   * Every member sees every WhatsApp group's invite link without asking to join, as on the
+   * old forum.club site. Off = members request to join and an admin approves.
+   */
+  whatsappOpenAccess: false,
+};
+export type Features = typeof DEFAULT_FEATURES;
+
 @Injectable()
 export class SiteService {
   constructor(private readonly repo: SiteRepository) {}
@@ -38,6 +48,26 @@ export class SiteService {
   private async setting<T>(key: string, fallback: T): Promise<T> {
     const row = await this.repo.findSetting(key);
     return (row?.value as T) ?? fallback;
+  }
+
+  /** New in-app path for an old WordPress URL path (filled by the WordPress import). */
+  async legacyRedirect(rawPath: string) {
+    const path = rawPath.trim().replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0].slice(0, 300);
+    if (!path.startsWith('/')) return { to: null };
+    const bare = path.replace(/\/+$/, '');
+    let decoded = bare;
+    try {
+      decoded = decodeURIComponent(bare);
+    } catch {
+      // malformed escape: match the raw path only
+    }
+    const row = await this.repo.findLegacyRedirect([bare, `${bare}/`, decoded, `${decoded}/`]);
+    return { to: row?.newUrl ?? null };
+  }
+
+  /** Feature switches, for other modules. */
+  async features(): Promise<Features> {
+    return { ...DEFAULT_FEATURES, ...(await this.setting<Partial<Features>>('features', {})) };
   }
 
   private async menu(menu: NavMenu) {
