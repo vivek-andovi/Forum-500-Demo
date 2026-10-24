@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './core/audit/audit.module';
 import { AuthGuard } from './core/auth/auth.guard';
 import { AuthModule } from './core/auth/auth.module';
 import { AllExceptionsFilter } from './core/common/all-exceptions.filter';
+import { ClientIpThrottlerGuard } from './core/common/client-ip-throttler.guard';
 import { env } from './core/config/env';
 import { HealthModule } from './core/health/health.module';
 import { MailModule } from './core/mail/mail.module';
@@ -24,7 +25,8 @@ import { SiteModule } from './modules/site/site.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     // Default: RATE_LIMIT_PER_MINUTE (300) requests / minute / IP. Sensitive routes set stricter limits.
-    // With several ECS tasks, switch to a Redis-backed storage (ElastiCache).
+    // Counted per running instance: with several Lambda instances (or ECS tasks) the limit is per instance, so
+    // Cloudflare rate-limiting rules in front are the real protection.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: env().RATE_LIMIT_PER_MINUTE }]),
     // Core infrastructure
     PrismaModule,
@@ -44,7 +46,7 @@ import { SiteModule } from './modules/site/site.module';
     AdminModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],

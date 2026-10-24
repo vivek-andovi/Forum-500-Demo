@@ -19,8 +19,8 @@ const EXTENSIONS: Record<string, string> = {
 
 /**
  * File storage. `local` writes to ./uploads (development only); `s3` writes to an
- * S3 bucket (AWS, or MinIO locally via S3_ENDPOINT). Public URLs come from
- * ASSET_PUBLIC_BASE_URL (CloudFront) when set.
+ * S3-compatible bucket: Cloudflare R2 (S3_ENDPOINT + S3_REGION=auto + S3_ACCESS_KEY_ID), AWS S3 or MinIO.
+ * Public URLs come from ASSET_PUBLIC_BASE_URL (the bucket's custom domain) when set.
  */
 @Injectable()
 export class StorageService {
@@ -29,9 +29,12 @@ export class StorageService {
   private readonly s3 =
     this.cfg.STORAGE_DRIVER === 's3'
       ? new S3Client({
-          region: this.cfg.AWS_REGION,
+          region: this.cfg.S3_REGION ?? this.cfg.AWS_REGION,
           endpoint: this.cfg.S3_ENDPOINT,
           forcePathStyle: this.cfg.S3_FORCE_PATH_STYLE,
+          ...(this.cfg.S3_ACCESS_KEY_ID && {
+            credentials: { accessKeyId: this.cfg.S3_ACCESS_KEY_ID, secretAccessKey: this.cfg.S3_SECRET_ACCESS_KEY! },
+          }),
           // Browsers PUT to presigned URLs without SDK checksum headers.
           requestChecksumCalculation: 'WHEN_REQUIRED',
           responseChecksumValidation: 'WHEN_REQUIRED',

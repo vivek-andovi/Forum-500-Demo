@@ -1,9 +1,11 @@
 # Deployment
 
-> **PENDING (24 Oct 2026):** no deploy target has been chosen yet, and nothing below has been created. The repo holds
-> four alternative setups (`infra/terraform`, `infra/aws/*.json`, `render.yaml` + [FREE_DEPLOY.md](FREE_DEPLOY.md),
-> and [deploy-plans/](deploy-plans/)); once one is picked, the others get deleted. The GitHub workflows run only when
-> started by hand (Actions → Run workflow) until then. `infra/aws/*.json` is a hand-kept copy of what Terraform builds.
+> **Current plan (24 Oct 2026): AWS + Cloudflare only.** API on AWS Lambda (container image, API Gateway HTTP API),
+> files on Cloudflare R2, Postgres on RDS / Aurora. Dev is built by the scripts in [`migrate/`](../migrate/README.md),
+> which also hold the architecture diagram and the data migration for every environment. Staging/production follow
+> [Plan 2](deploy-plans/PLAN_2_AWS_LAMBDA_AURORA.md). The ECS/Amplify material below (`infra/terraform`,
+> `infra/aws/*.json`) predates that decision and is kept only until Plan 2's Terraform replaces it. The GitHub
+> workflows run only when started by hand.
 
 Forum500 is set up to deploy to **AWS**. The full step-by-step guide is in [AWS_SETUP.md](AWS_SETUP.md).
 

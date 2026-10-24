@@ -1,0 +1,4 @@
+# Secrets and outputs: env files hold keys and passwords; out/ holds database dumps with member data.
+env/*.env
+!env/*.env.example
+out/

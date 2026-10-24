@@ -27,12 +27,28 @@ const EnvSchema = z
     /** Default requests per minute per IP (auth and public routes have stricter limits). */
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(10).default(300),
 
-    // Storage: "local" for dev, "s3" for AWS (or MinIO via S3_ENDPOINT).
+    // Storage: "local" for dev, "s3" for any S3-compatible store: Cloudflare R2 (S3_ENDPOINT), AWS S3, MinIO.
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    /** AWS region for SES. On Lambda it is set by AWS (reserved). */
     AWS_REGION: z.string().default('eu-west-2'),
     S3_BUCKET: z.string().optional(),
     S3_ENDPOINT: z.string().url().optional(),
     S3_FORCE_PATH_STYLE: bool,
+    /** Storage region; R2 uses "auto". Defaults to AWS_REGION. */
+    S3_REGION: z.string().optional(),
+    /**
+     * Storage keys (e.g. an R2 API token). Separate from AWS_ACCESS_KEY_ID, which Lambda reserves for its own
+     * role credentials. Leave unset to use the default AWS credentials (an IAM role with S3 access).
+     */
+    S3_ACCESS_KEY_ID: z.string().optional(),
+    S3_SECRET_ACCESS_KEY: z.string().optional(),
+    /** Largest file accepted by POST /admin/uploads, in MB. On Lambda keep ≤ 4 (6 MB request limit); bigger files use presigned uploads. */
+    UPLOAD_MAX_MB: z.coerce.number().positive().default(150),
+    /**
+     * Shared secret Cloudflare adds to every request (Transform Rule → header x-origin-secret). When set, requests
+     * without it are refused, and the client IP for rate limits comes from CF-Connecting-IP.
+     */
+    ORIGIN_SECRET: z.string().min(16).optional(),
     /** Public base for files, e.g. https://assets.forum500.club (CloudFront). */
     ASSET_PUBLIC_BASE_URL: z.string().url().optional(),
 
@@ -47,6 +63,9 @@ const EnvSchema = z
     }
     if (env.STORAGE_DRIVER === 's3' && !env.S3_BUCKET) {
       ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 'is required when STORAGE_DRIVER=s3' });
+    }
+    if (!!env.S3_ACCESS_KEY_ID !== !!env.S3_SECRET_ACCESS_KEY) {
+      ctx.addIssue({ code: 'custom', path: ['S3_SECRET_ACCESS_KEY'], message: 'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY go together' });
     }
   });
 

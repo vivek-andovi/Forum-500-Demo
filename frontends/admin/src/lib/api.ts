@@ -111,7 +111,14 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
   return handle<T>(res, !!token, request);
 }
 
+/**
+ * Files above this go straight from the browser to the bucket (presign → PUT → confirm), because the API on
+ * Lambda accepts about 6 MB per request. Matches the API's UPLOAD_MAX_MB on Lambda.
+ */
+const DIRECT_UPLOAD_MAX_BYTES = Number(process.env.NEXT_PUBLIC_DIRECT_UPLOAD_MAX_MB || 4) * 1e6;
+
 export async function uploadFile(file: File): Promise<{ url: string; id: string }> {
+  if (file.size > DIRECT_UPLOAD_MAX_BYTES) return uploadViaPresign(file);
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
@@ -126,6 +133,21 @@ export async function uploadFile(file: File): Promise<{ url: string; id: string 
     throw new ApiError(0, [`Cannot reach the API at ${API_URL}`], "POST /admin/uploads");
   }
   return handle(res, !!token, "POST /admin/uploads");
+}
+
+/** Large files: the API signs a 5-minute upload URL, the browser PUTs the file to the bucket, the API records it. */
+async function uploadViaPresign(file: File): Promise<{ url: string; id: string }> {
+  const meta = { filename: file.name, mime: file.type, size: file.size };
+  const { key, uploadUrl } = await api<{ key: string; uploadUrl: string }>("/admin/uploads/presign", { method: "POST", body: meta });
+  const request = "PUT (file storage)";
+  let put: Response;
+  try {
+    put = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+  } catch {
+    throw new ApiError(0, ["Couldn't send the file to storage. The bucket's CORS rule must allow PUT from this site."], request);
+  }
+  if (!put.ok) throw new ApiError(put.status, [`File storage refused the upload (${put.status})`], request, put.statusText);
+  return api("/admin/uploads/confirm", { method: "POST", body: { key, ...meta } });
 }
 
 export function errorMessage(e: unknown): string {
