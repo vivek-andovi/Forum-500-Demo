@@ -59,9 +59,10 @@ export interface EmailCampaign extends Timestamps {
   subject: string;
   senderLabel: string;
   preview: string | null;
-  body: string | null;
-  /** Full newsletter HTML document (imported archive); render sandboxed. */
-  html: string | null;
+  /** Only on GET /v1/emails/:id; the list leaves the content out. */
+  body?: string | null;
+  /** Full newsletter HTML document (imported archive); render sandboxed. Only on GET /v1/emails/:id. */
+  html?: string | null;
   status: "draft" | "scheduled" | "sent";
   scheduledAt: ISODate | null;
   sentAt: ISODate | null;

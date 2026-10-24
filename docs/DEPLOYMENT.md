@@ -1,6 +1,13 @@
 # Deployment
 
-Forum500 deploys to **AWS**. The full step-by-step guide is in [AWS_SETUP.md](AWS_SETUP.md).
+> **Current plan (24 Oct 2026): AWS + Cloudflare only.** API on AWS Lambda (container image, API Gateway HTTP API),
+> files on Cloudflare R2, Postgres on RDS / Aurora. Dev is built by the scripts in [`migrate/`](../migrate/README.md),
+> which also hold the architecture diagram and the data migration for every environment. Staging/production follow
+> [Plan 2](deploy-plans/PLAN_2_AWS_LAMBDA_AURORA.md). The ECS/Amplify material below (`infra/terraform`,
+> `infra/aws/*.json`) predates that decision and is kept only until Plan 2's Terraform replaces it. The GitHub
+> workflows run only when started by hand.
+
+Forum500 is set up to deploy to **AWS**. The full step-by-step guide is in [AWS_SETUP.md](AWS_SETUP.md).
 
 | App | AWS service | Trigger | Config |
 |---|---|---|---|

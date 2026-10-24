@@ -32,10 +32,15 @@ export function onAuthChange(cb: () => void) {
 export class ApiError extends Error {
   status: number;
   body: unknown;
-  constructor(status: number, message: string, body: unknown) {
+  /** The request that failed, e.g. "GET /v1/emails/…" (shown in the error details dialog). */
+  request?: string;
+  statusText?: string;
+  constructor(status: number, message: string, body: unknown, request?: string, statusText?: string) {
     super(message);
     this.status = status;
     this.body = body;
+    this.request = request;
+    this.statusText = statusText;
   }
 }
 
@@ -68,11 +73,12 @@ export async function api<T = unknown>(
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
+  const request = `${method} ${path.split("?")[0]}`;
   let res: Response;
   try {
     res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   } catch {
-    throw new ApiError(0, "Could not reach the Forum500 API. Please try again.", null);
+    throw new ApiError(0, "Could not reach the Forum500 API. Please try again.", null, request);
   }
   const text = await res.text();
   let data: unknown = null;
@@ -85,7 +91,7 @@ export async function api<T = unknown>(
   }
   if (!res.ok) {
     if (res.status === 401 && auth) setToken(null);
-    throw new ApiError(res.status, messageFrom(data, res.statusText || "Request failed"), data);
+    throw new ApiError(res.status, messageFrom(data, res.statusText || "Request failed"), data, request, res.statusText);
   }
   return data as T;
 }

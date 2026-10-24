@@ -6,3 +6,5 @@ dist
 uploads
 scripts/localstack-init.sh
 *.log
+# Import reports list members' names and emails
+wp-import-report

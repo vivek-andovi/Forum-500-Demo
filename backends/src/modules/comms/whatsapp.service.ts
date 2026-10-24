@@ -34,23 +34,29 @@ export class WhatsappService {
     };
   }
 
+  /** Join request for a chapter host to approve; with `whatsappOpenAccess` on, members join straight away. */
   async join(user: AuthUser, groupId: string) {
     const memberId = requireMember(user);
     if (!(await this.repo.findActiveGroup(groupId))) throw new NotFoundException('Group not found');
     const existing = await this.repo.findMembership(groupId, memberId);
     if (existing?.status === 'approved') throw new BadRequestException('You are already in this group');
-    return this.repo.requestJoin(groupId, memberId);
+    const { whatsappOpenAccess } = await this.site.features();
+    const autoApprove = whatsappOpenAccess && existing?.status !== 'rejected';
+    return this.repo.requestJoin(groupId, memberId, autoApprove ? 'approved' : 'requested');
   }
 
+  /** Approved members only, or any member when `whatsappOpenAccess` is on (as on the old site). */
   private async requireApproved(user: AuthUser, groupId: string) {
     const memberId = requireMember(user);
     if (!(await this.repo.findActiveGroup(groupId))) throw new NotFoundException('Group not found');
-    const membership = await this.repo.findMembership(groupId, memberId);
-    if (membership?.status !== 'approved') throw new ForbiddenException('Join this group to see and post messages');
-    return memberId;
+    const [membership, { whatsappOpenAccess }] = await Promise.all([this.repo.findMembership(groupId, memberId), this.site.features()]);
+    if (membership?.status === 'approved') return memberId;
+    // A member a host rejected stays out even in open mode.
+    if (whatsappOpenAccess && membership?.status !== 'rejected') return memberId;
+    throw new ForbiddenException('Join this group to see and post messages');
   }
 
-  /** Group chat (oldest first) for approved members. */
+  /** Group chat (oldest first) for members allowed in (see requireApproved). */
   async messages(user: AuthUser, groupId: string) {
     const memberId = await this.requireApproved(user, groupId);
     const rows = await this.repo.listMessages(groupId);

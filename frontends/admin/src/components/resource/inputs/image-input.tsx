@@ -3,10 +3,11 @@
 import { useRef, useState } from "react";
 import { ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { errorMessage, uploadFile } from "@/lib/api";
+import { uploadFile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toastError } from "@/components/common/problem-center";
 
 export function ImageInput({
   value,
@@ -33,7 +34,7 @@ export function ImageInput({
       setBroken(false);
       toast.success("Image uploaded");
     } catch (e) {
-      toast.error(errorMessage(e));
+      toastError(e);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

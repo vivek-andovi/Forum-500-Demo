@@ -278,23 +278,6 @@ export const inforumArticles: InforumArticle[] = [
   },
 ];
 
-export type InforumTabId =
-  | "editors-choice"
-  | "around-the-world"
-  | "by-members"
-  | "recommendations"
-  | "comments"
-  | InforumSection;
-
-export const inforumTabs: { id: InforumTabId; label: string }[] = [
-  { id: "editors-choice", label: "Editor's Choice" },
-  { id: "around-the-world", label: "From Around the World" },
-  { id: "by-members", label: "Articles by Members" },
-  { id: "recommendations", label: "Member Recommendations" },
-  { id: "comments", label: "Comments" },
-  ...inforumSections,
-];
-
 export type RecommendationCategory = "eat" | "stay" | "travel" | "read";
 
 export interface MemberRecommendation {
@@ -308,13 +291,6 @@ export interface MemberRecommendation {
   memberChapter: string;
   image: string;
 }
-
-export const recommendationCategories: { id: RecommendationCategory; label: string }[] = [
-  { id: "eat", label: "Where to eat" },
-  { id: "stay", label: "Where to stay" },
-  { id: "travel", label: "Where to travel" },
-  { id: "read", label: "What to read" },
-];
 
 export const memberRecommendations: MemberRecommendation[] = [
   {
@@ -683,18 +659,3 @@ export const inforumEditions: InforumEdition[] = [
     articles: juneEdition,
   },
 ];
-
-export const currentEdition = inforumEditions[0]!;
-
-export function getEdition(id: string): InforumEdition {
-  return inforumEditions.find((e) => e.id === id) ?? currentEdition;
-}
-
-export function articlesForTab(tab: InforumTabId, editionId?: string): InforumArticle[] {
-  const pool = editionId ? getEdition(editionId).articles : inforumArticles;
-  if (tab === "editors-choice") return pool.filter((a) => a.editorsChoice);
-  if (tab === "around-the-world") return pool.filter((a) => a.fromAroundTheWorld);
-  if (tab === "by-members") return pool.filter((a) => a.isMember);
-  return pool.filter((a) => a.section === tab);
-}
-

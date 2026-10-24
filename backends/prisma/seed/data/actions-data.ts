@@ -1,7 +1,6 @@
 // @ts-nocheck
 /* Generated from the Lovable prototype. */
 const A = (f: string) => `${process.env.PUBLIC_API_URL ?? "http://localhost:4000"}/static/assets/${f}`;
-const Eye = null, CheckCircle2 = null, FileSignature = null, CreditCard = null, ClipboardList = null;
 export type ActionType = "review" | "approve" | "sign" | "pay" | "fill";
 
 export type ActionItem = {
@@ -12,14 +11,6 @@ export type ActionItem = {
   context: string;
   due: string;
   amount?: string;
-};
-
-export const typeMeta: Record<ActionType, { label: string; icon: unknown; cta: string }> = {
-  review: { label: "Review", icon: Eye, cta: "Review" },
-  approve: { label: "Approve", icon: CheckCircle2, cta: "Approve" },
-  sign: { label: "Sign", icon: FileSignature, cta: "Sign" },
-  pay: { label: "Pay", icon: CreditCard, cta: "Pay now" },
-  fill: { label: "Fill", icon: ClipboardList, cta: "Complete" },
 };
 
 export const initialActions: ActionItem[] = [

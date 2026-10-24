@@ -196,71 +196,6 @@ export const events: ForumEvent[] = [
   },
 ];
 
-export interface Story {
-  id: string;
-  section: string;
-  title: string;
-  excerpt: string;
-  author: string;
-  readTime: string;
-  date: string;
-  featured?: boolean;
-}
-
-export const stories: Story[] = [
-  {
-    id: "the-new-salon",
-    section: "News",
-    title: "The return of the salon: why small rooms matter again",
-    excerpt:
-      "After a decade of scale, the most interesting conversations are happening around tables of twelve. Forum chapters report record attendance at intimate dinners — and a quiet rebellion against the conference circuit.",
-    author: "Tomás Herrera",
-    readTime: "6 min read",
-    date: "4 September 2026",
-    featured: true,
-  },
-  {
-    id: "ideas-happen-priya",
-    section: "Make Ideas Happen",
-    title: "How a Singapore dinner became a hotel partnership",
-    excerpt:
-      "Two members met at a chapter reception in 2023. This year they open their first joint property. Priya Nair on how the introduction happened — and what made it work.",
-    author: "Priya Nair",
-    readTime: "4 min read",
-    date: "28 August 2026",
-  },
-  {
-    id: "ask-zola-autumn",
-    section: "Ask Zola",
-    title: "Ask Zola: finding a co-founder outside your sector",
-    excerpt:
-      "This month Zola answers a member in Stockholm looking beyond technology for a business partner — and why the best matches often come from the least adjacent rooms.",
-    author: "Zola",
-    readTime: "3 min read",
-    date: "21 August 2026",
-  },
-  {
-    id: "regions-gulf",
-    section: "Regions",
-    title: "The Gulf's new cultural institutions are hiring differently",
-    excerpt:
-      "Museums and festivals across the Gulf are recruiting from hospitality as much as the art world. What that says about how experience is valued now.",
-    author: "Daniel Okafor",
-    readTime: "7 min read",
-    date: "14 August 2026",
-  },
-  {
-    id: "sectors-hospitality",
-    section: "Sectors",
-    title: "Hospitality's quiet consolidation of private clubs",
-    excerpt:
-      "Members' clubs are merging, and the independent rooms are becoming rarer — and more valuable. A look at the economics behind the trend.",
-    author: "James Whitfield",
-    readTime: "5 min read",
-    date: "7 August 2026",
-  },
-];
-
 export interface NewMemberInterview {
   id: string;
   name: string;
@@ -524,44 +459,6 @@ export const benefits = [
 export const attendingEventIds = ["singapore-rooftop-reception", "stockholm-ideas-roundtable"];
 export const hostingEventIds = ["london-evening-salon"];
 
-export const myBenefits = ["Travel Network", "In:Forum", "Preferred Pricing"];
-
-export const benefitsIOffer = [
-  {
-    id: "plotify-portfolio-review",
-    title: "Portfolio strategy session",
-    detail: "A one-to-one working session for Members building residential investment portfolios.",
-    status: "Active",
-  },
-  {
-    id: "venture-build-office-hours",
-    title: "Venture-build office hours",
-    detail: "Monthly office hours for Members exploring new venture ideas, from concept to first revenue.",
-    status: "Active",
-  },
-  {
-    id: "plotify-preferred-membership",
-    title: "Preferred Membership Access to Plotify",
-    detail: "Preferred onboarding and membership terms for Forum Members joining Plotify.",
-    status: "Active",
-  },
-];
-
-export const benefitsInFocus = [
-  {
-    id: "harbour-house",
-    title: "Harbour House, Nassau",
-    detail: "New partner rate for Members and their guests across the winter season.",
-    status: "New",
-  },
-  {
-    id: "cellar-list",
-    title: "The Cellar List",
-    detail: "Member-only allocations from three Forum winemakers, released each quarter.",
-    status: "Featured",
-  },
-];
-
 export const memberArticles = [
   { id: "a1", title: "The quiet return of the long lunch", author: "Tomás Herrera", readTime: "6 min", image: articleLongLunch },
   { id: "a2", title: "What founders get wrong about patient capital", author: "Sofia Lindqvist", readTime: "8 min", image: articlePatientCapital },
@@ -600,33 +497,6 @@ export const recommendedBooks = [
 ];
 
 export const myWhatsappGroups = ["London", "New York", "Singapore"];
-
-export const messageThreads = [
-  {
-    id: "t1",
-    source: "London chapter group",
-    kind: "WhatsApp" as const,
-    preview: "Two seats have opened for Thursday's salon — first to reply.",
-    time: "2h ago",
-    body: "Two seats have opened for Thursday's salon at the Mayfair dining room. Reply here and the chapter host will confirm. Dress is jacket, no tie.",
-  },
-  {
-    id: "t2",
-    source: "Forum500",
-    kind: "Email" as const,
-    preview: "In:Forum Volume IX is now open for member contributions.",
-    time: "Yesterday",
-    body: "Volume IX closes for submissions on 30 October. We are looking for essays, interviews and photography from across the chapters. Reply to this thread with a one-paragraph pitch.",
-  },
-  {
-    id: "t3",
-    source: "Singapore chapter group",
-    kind: "WhatsApp" as const,
-    preview: "Anyone in town the week of the rooftop reception?",
-    time: "3 days ago",
-    body: "Anyone in town the week of the rooftop reception? Happy to host a small dinner the night before for members travelling in.",
-  },
-];
 
 export const myGroups = [
   { id: "g1", name: "Hospitality & Travel", members: 84, note: "Openings, partnerships and places worth knowing." },
@@ -689,55 +559,6 @@ export const forumQuestions = [
   "What idea would you most like to make happen with the Forum?",
 ];
 
-export const myPublications = [
-  {
-    id: "p1",
-    title: "Why the next decade belongs to patient founders",
-    outlet: "Forum Forecast",
-    date: "March 2026",
-    readTime: "7 min",
-  },
-  {
-    id: "p2",
-    title: "The room is the product: notes on gathering well",
-    outlet: "In:Forum",
-    date: "January 2026",
-    readTime: "5 min",
-  },
-  {
-    id: "p3",
-    title: "A short letter on curiosity",
-    outlet: "Shared with Members",
-    date: "November 2025",
-    readTime: "3 min",
-  },
-];
-
-export const myAppearances = [
-  {
-    id: "m1",
-    title: "Forum Radio — Episode 38: Building across borders",
-    format: "Podcast",
-    date: "February 2026",
-    duration: "44 min",
-  },
-  {
-    id: "m2",
-    title: "Five Questions with Anish",
-    format: "Interview",
-    date: "October 2025",
-    duration: "6 min read",
-  },
-];
-
-export const myFeed = [
-  { id: "f1", type: "Article", text: "Published “Why the next decade belongs to patient founders” in Forum Forecast.", time: "March 2026" },
-  { id: "f2", type: "Event", text: "Hosted the London Evening Salon at the Club.", time: "February 2026" },
-  { id: "f3", type: "Podcast", text: "Appeared on Forum Radio Episode 38.", time: "February 2026" },
-  { id: "f4", type: "Group", text: "Joined the Independent Media group.", time: "January 2026" },
-  { id: "f5", type: "Introduction", text: "Introduced by Simon to Priya Raghavan in Singapore.", time: "December 2025" },
-];
-
 // --- Member Benefits marketplace ---------------------------------------
 
 export interface BenefitOffer {
@@ -758,7 +579,7 @@ export interface BenefitOffer {
 }
 
 // The original Lovable-hosted portrait is not available outside Lovable; use a bundled photo.
-export const anishPortrait = A("member-shreyas.jpg");
+const anishPortrait = A("member-shreyas.jpg");
 
 export const memberOffers: BenefitOffer[] = [
   {

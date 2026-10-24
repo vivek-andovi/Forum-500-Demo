@@ -8,7 +8,7 @@ export interface SlugOptions {
   stripAccents?: boolean;
 }
 
-export function slugify(input: string, { maxLength = 80, stripAccents = true }: SlugOptions = {}): string {
+function slugify(input: string, { maxLength = 80, stripAccents = true }: SlugOptions = {}): string {
   const base = stripAccents ? input.normalize('NFKD').replace(/[\u0300-\u036f]/g, '') : input;
   return base
     .toLowerCase()

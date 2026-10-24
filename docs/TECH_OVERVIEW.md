@@ -2,7 +2,7 @@
 
 **Prepared:** 19 Oct 2026
 **Status:** working end to end on local; AWS deployment files are ready but no AWS resources have been created yet.
-**Repo:** `Forum Club/Monorepo`
+**Repo:** `Forum500/Monorepo`
 - `backends/`: NestJS API
 - `frontends/admin`: admin portal
 - `frontends/web`: member app and public site

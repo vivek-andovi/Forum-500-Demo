@@ -2,9 +2,10 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queries";
 import type { AdminRecord } from "@/lib/types";
+import { toastError } from "@/components/common/problem-center";
 
 /** Marks everything derived from a resource as stale (lists, records, options, dashboard, approvals). */
 export function useInvalidateResource() {
@@ -28,7 +29,7 @@ export function useStatusMutation(resource: string) {
       toast.success("Status updated");
       invalidate(resource);
     },
-    onError: (e) => toast.error(errorMessage(e)),
+    onError: (e) => toastError(e),
   });
 }
 
@@ -43,7 +44,7 @@ export function useDeleteMutation(resource: string) {
       toast.success("Deleted");
       invalidate(resource);
     },
-    onError: (e) => toast.error(errorMessage(e)),
+    onError: (e) => toastError(e),
   });
 }
 
@@ -67,6 +68,6 @@ export function useWorkflowMutation<TVars = void, TData = unknown>({
       toast.success(typeof success === "function" ? success(vars) : success);
       await onSuccess?.(data, vars);
     },
-    onError: (e) => toast.error(errorMessage(e)),
+    onError: (e) => toastError(e),
   });
 }

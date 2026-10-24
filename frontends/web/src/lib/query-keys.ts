@@ -47,6 +47,7 @@ export const qk = {
   introductions: ["introductions"] as const,
   whatsapp: ["whatsapp"] as const,
   emails: ["emails"] as const,
+  email: (id: string) => ["emails", id] as const,
   notifications: ["notifications"] as const,
   actions: ["actions"] as const,
   concierge: ["concierge"] as const,

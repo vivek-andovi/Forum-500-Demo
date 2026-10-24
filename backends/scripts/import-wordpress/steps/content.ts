@@ -73,7 +73,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
       labelOf.set(m[1], titleCase(m[2].toUpperCase()));
     }
     const books = options.map((o) => ({ id: o.name.split('_')[1], ...(phpUnserialize(o.value) ?? {}) })).filter((b) => b.pdfUrl);
-    ctx.report.expect('magazine (flipbook)', books.length);
+    ctx.report.expect('flipbook', books.length);
     const thumbOf = async (postId: number | undefined) => {
       if (!postId) return null;
       const [t] = await ctx.q<{ v: string }>(`SELECT meta_value v FROM {postmeta} WHERE post_id = ? AND meta_key = '_thumbnail_id'`, [postId]);
@@ -126,7 +126,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
       const ed = folder.name.match(/INFORUM-(Spring|Summer|Autumn|Winter)(\d{4})/i);
       const isForecast = /forecast/i.test(folder.name);
       const editionSlug = ed ? `${ed[1].toLowerCase()}-${ed[2]}` : null;
-      const editionId = editionSlug ? editionIdBySlug.get(editionSlug) ?? ctx.idOf('edition-slug', editionSlug) : null;
+      const editionId = editionSlug ? editionIdBySlug.get(editionSlug) : null;
       if (!isForecast && !editionId) {
         ctx.report.issue('Magazine folders not matched to an edition', folder.name);
         continue;
@@ -138,7 +138,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
         if (!rtf) continue;
         const page = Number(art.name.match(/\[p(\d+)\]/)?.[1] ?? 999);
         const title = art.name.replace(/\s*\[p\d+\]\s*$/, '').trim();
-        const parsed = parseMagazineArticle(rtfToText(join(artDir, rtf)), title);
+        const parsed = parseMagazineArticle(rtfToText(join(artDir, rtf)));
         const images = files.filter((f) => /\.(jpe?g|png|webp)$/i.test(f));
         const authorWords = nameKey(parsed.authorName ?? '').split(' ').filter((w) => w.length > 2);
         const headshot = images.find((f) => authorWords.length > 0 && authorWords.some((w) => nameKey(f).includes(w)) && !/main|inset|image\d/i.test(f));
@@ -171,13 +171,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
           update: (id) => db.article.update({ where: { id }, data: { ...data, slug: undefined } }),
           exists: exists('article'),
         });
-        if (articleId && editionId && !ctx.opt.dryRun) {
-          await db.editionArticle.upsert({
-            where: { editionId_articleId: { editionId, articleId } },
-            create: { editionId, articleId, sortOrder: page, createdBy: IMPORT_ACTOR },
-            update: { sortOrder: page },
-          });
-        }
+        if (articleId && editionId) await ctx.link('EditionArticle', { editionId, articleId }, { sortOrder: page }, { sortOrder: page });
         if (parsed.body.length < 3) ctx.report.issue('Magazine articles with little text (check)', `${folder.name} / ${title}`);
       }
     }
@@ -217,7 +211,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
         else cur.text.push(text);
       }
     }
-    ctx.report.expect('podcast episode', episodes.length);
+    ctx.report.expect('podcast', episodes.length);
     const used = new Set<string>();
     for (const ep of episodes) {
       const guestLine = ep.guestLine ?? '';
@@ -344,7 +338,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
       exists: exists('galleryAlbum'),
     });
     if (!albumId) return;
-    ctx.report.expect('gallery photo', photos.length);
+    ctx.report.expect('gallery-photo', photos.length);
     let cover: string | null = null;
     for (const [i, p] of photos.entries()) {
       const url = (await media.url(p.id)) ?? (await media.url(p.url));
@@ -371,7 +365,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
        FROM {posts} p WHERE p.post_type = 'post' AND p.post_status = 'publish' ORDER BY p.post_date_gmt`,
     );
     const others = posts.filter((p) => !(p.cats ?? '').split('|').includes('new member'));
-    ctx.report.expect('blog post', others.length);
+    ctx.report.expect('post', others.length);
     for (const p of others) {
       const paras = htmlToParagraphs(p.content);
       const rawTitle = decodeEntities(p.title).trim();
@@ -413,7 +407,7 @@ export async function importContent(ctx: Ctx, media: Media, people: People) {
          (SELECT meta_value FROM {postmeta} WHERE post_id = p.ID AND meta_key = '_thumbnail_id' LIMIT 1) thumb
        FROM {posts} p WHERE p.ID IN (?)`, [PAGE.reports],
     );
-    ctx.report.expect('event write-up', pages.length);
+    ctx.report.expect('report', pages.length);
     for (const p of pages) {
       const paras = htmlToParagraphs(p.content).filter((x) => !/^(connecting\.{3}|read more|back to top)$/i.test(x));
       const title = decodeEntities(p.title).trim();
@@ -482,7 +476,7 @@ const BOILERPLATE = [
  *   name-like line = byline; trailing "NAME" + "CITY | Role" lines = author signature;
  *   pull quotes repeated at the end are dropped; lines broken mid-sentence are re-joined.
  */
-export function parseMagazineArticle(text: string, title: string) {
+function parseMagazineArticle(text: string) {
   let lines = text.replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
   lines = lines.filter((l) => !BOILERPLATE.some((re) => re.test(l)));
   // Line 1 is always the title as printed (or a header such as "IN:FORUM PROFILE", followed by the subject's name).

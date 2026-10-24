@@ -14,7 +14,7 @@ export async function copyPhoto(photo: GalleryPhoto) {
 }
 
 /** Re-encodes any image blob as PNG via a canvas. */
-export function toPng(blob: Blob): Promise<Blob> {
+function toPng(blob: Blob): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {

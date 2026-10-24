@@ -35,7 +35,8 @@ export class ActionsRepository {
 
   /** Global actions are completed by storing a personal completed copy. */
   completeGlobalFor(action: ActionItem, memberId: string) {
-    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = action;
+    // The copy is the member's own record: audit fields are stamped afresh, not copied from the global action.
+    const { id: _id, createdAt: _c, updatedAt: _u, createdBy: _cb, updatedBy: _ub, deletedAt: _da, deletedBy: _db, ...rest } = action;
     return this.prisma.actionItem.create({ data: { ...rest, memberId, status: 'completed', completedAt: new Date() } });
   }
 }

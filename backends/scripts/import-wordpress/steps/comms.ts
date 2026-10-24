@@ -1,5 +1,5 @@
 import { Ctx, IMPORT_ACTOR } from '../lib/context';
-import { cleanMailpoetShortcodes, renderMailpoet } from '../lib/mailpoet';
+import { cleanMailpoetShortcodes, renderMailpoet, resolveMailpoetTracking } from '../lib/mailpoet';
 import { Media } from '../lib/media';
 import { phpUnserialize } from '../lib/php';
 import { decodeEntities, htmlToText, mysqlUtc, nameKey, titleCase, truncate } from '../lib/text';
@@ -15,12 +15,12 @@ export async function importComms(ctx: Ctx, media: Media, people: People) {
   // ───────────── WhatsApp groups ─────────────
   await ctx.step('whatsapp', async () => {
     await ensurePeople();
-    const rows = await ctx.q<{ id: number; title: string; status: string; info: string | null; ord: number }>(
-      `SELECT p.ID id, p.post_title title, p.post_status status, p.menu_order ord,
+    const rows = await ctx.q<{ id: number; title: string; status: string; info: string | null }>(
+      `SELECT p.ID id, p.post_title title, p.post_status status,
          (SELECT meta_value FROM {postmeta} WHERE post_id = p.ID AND meta_key = 'nta_wa_account_info' LIMIT 1) info
        FROM {posts} p WHERE p.post_type = 'whatsapp-accounts' AND p.post_status IN ('publish', 'draft') ORDER BY p.ID`,
     );
-    ctx.report.expect('whatsapp group', rows.length);
+    ctx.report.expect('whatsapp', rows.length);
     const existing = await db.whatsappGroup.findMany({ select: { id: true, name: true } });
     for (const [i, r] of rows.entries()) {
       const info = phpUnserialize(r.info) ?? {};
@@ -38,11 +38,15 @@ export async function importComms(ctx: Ctx, media: Media, people: People) {
         exists: async (id) => !!(await db.whatsappGroup.findUnique({ where: { id }, select: { id: true } })),
       });
     }
-    // On the old site every member could join any group straight away.
+    // On the old site every member could join any group straight away. Set once only: a re-run must not undo an
+    // admin who has since switched it off.
     if (!ctx.opt.dryRun) {
       const cur = await db.setting.findUnique({ where: { key: 'features' } });
-      const value = { ...((cur?.value as object) ?? {}), whatsappOpenAccess: true };
-      await db.setting.upsert({ where: { key: 'features' }, create: { key: 'features', value, createdBy: IMPORT_ACTOR }, update: { value } });
+      const features = (cur?.value as Record<string, unknown> | null) ?? {};
+      if (!('whatsappOpenAccess' in features)) {
+        const value = { ...features, whatsappOpenAccess: true };
+        await db.setting.upsert({ where: { key: 'features' }, create: { key: 'features', value, createdBy: IMPORT_ACTOR }, update: { value } });
+      }
     }
   });
 
@@ -136,6 +140,14 @@ export async function importComms(ctx: Ctx, media: Media, people: People) {
        FROM {mailpoet_newsletters} n WHERE n.status = 'sent' AND n.deleted_at IS NULL ORDER BY n.sent_at`,
     );
     ctx.report.expect('newsletter', letters.length);
+    // Real URLs behind the "[mailpoet_click_data]-<hash>" tracking links, per newsletter.
+    const linksOf = new Map<number, Map<string, string>>();
+    for (const l of await ctx.q<{ nid: number; hash: string; url: string }>(`SELECT newsletter_id nid, hash, url FROM {mailpoet_newsletter_links}`)) {
+      const m = linksOf.get(l.nid) ?? new Map<string, string>();
+      m.set(l.hash, l.url);
+      linksOf.set(l.nid, m);
+    }
+    const prepared: { n: (typeof letters)[number]; html: string; body: string }[] = [];
     for (const n of letters) {
       let html: string | null = null;
       let text: string | null = null;
@@ -155,12 +167,28 @@ export async function importComms(ctx: Ctx, media: Media, people: People) {
         ctx.report.issue('Newsletters not imported', `"${n.subject}" (#${n.id}): no content`);
         continue;
       }
-      html = await media.rewriteHtml(cleanMailpoetShortcodes(html));
-      const body = (text ? cleanMailpoetShortcodes(text) : htmlToText(html)).trim();
+      const links = linksOf.get(n.id) ?? new Map<string, string>();
+      html = await media.rewriteHtml(cleanMailpoetShortcodes(resolveMailpoetTracking(html, links)));
+      const body = (text ? cleanMailpoetShortcodes(resolveMailpoetTracking(text, links)) : htmlToText(html)).trim();
+      if (/\[mailpoet_(?:click|open)_data\]/.test(html + body)) ctx.report.issue('Newsletters with tracking placeholders left', `"${n.subject}" (#${n.id})`);
+      prepared.push({ n, html, body });
+    }
+
+    // Most newsletters open with the same preheader and header lines ("A weekly opportunity…", "View this in your
+    // browser", the logo). The preview skips lines found in several newsletters and uses each one's own text.
+    const lineUses = new Map<string, number>();
+    for (const { n, body } of prepared) {
+      for (const line of new Set([n.preheader?.trim() ?? '', ...previewLines(body)])) if (line) lineUses.set(line, (lineUses.get(line) ?? 0) + 1);
+    }
+    const own = (line: string) => (lineUses.get(line) ?? 0) <= 2;
+
+    for (const { n, html, body } of prepared) {
       const sentAt = mysqlUtc(n.sentAt);
+      const preheader = n.preheader?.trim();
+      const preview = preheader && own(preheader) ? preheader : previewLines(body).filter(own).join(' ') || body;
       const data = {
         subject: decodeEntities(n.subject), senderLabel: n.sender?.trim() || 'Forum Team', status: 'sent' as const, sentAt, html, body,
-        preview: truncate((n.preheader?.trim() || body.replace(/\s+/g, ' ')).trim(), 180),
+        preview: truncate(preview.replace(/\s+/g, ' ').trim(), 180),
       };
       const campaignId = await ctx.upsert('newsletter', n.id, 'EmailCampaign', {
         create: () => db.emailCampaign.create({ data: { ...data, createdAt: sentAt ?? undefined, createdBy: IMPORT_ACTOR } }),
@@ -192,4 +220,12 @@ export async function importComms(ctx: Ctx, media: Media, people: People) {
     }
     await ctx.redirect('/newsletter-archive/', '/comms/emails');
   });
+}
+
+/** A newsletter's text lines with markdown links reduced to their text ("[forum.club](https://…)" → "forum.club"). */
+function previewLines(body: string): string[] {
+  return body
+    .split('\n')
+    .map((l) => l.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/^\[[^\]]*\]$/, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
 }

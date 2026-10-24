@@ -8,16 +8,19 @@ import { httpUrl } from '../../core/common/util';
 import { MembersRepository } from './members.repository';
 import { ProfileRepository } from './profile.repository';
 
+/** Generous enough for every profile imported from forum.club (longest bio 5,091 chars, most interests 34). */
+export const PROFILE_LIMITS = { bio: 10_000, interests: 60, travelCities: 30 } as const;
+
 export const ProfileSchema = z
   .object({
     fullName: z.string().min(1).max(120).optional(),
     headline: z.string().max(200).nullish(),
     company: z.string().max(200).nullish(),
-    bio: z.string().max(5000).nullish(),
+    bio: z.string().max(PROFILE_LIMITS.bio).nullish(),
     avatarUrl: httpUrl().or(z.literal('')).nullish().transform((v) => v || null),
     linkedinUrl: httpUrl(500).or(z.literal('')).nullish().transform((v) => v || null),
-    interests: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
-    travelCities: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
+    interests: z.array(z.string().trim().min(1).max(60)).max(PROFILE_LIMITS.interests).optional(),
+    travelCities: z.array(z.string().trim().min(1).max(60)).max(PROFILE_LIMITS.travelCities).optional(),
     joinedYear: z.number().int().min(1900).max(2100).nullish(),
     chapterId: z.string().uuid().nullish(),
     sectorId: z.string().uuid().nullish(),

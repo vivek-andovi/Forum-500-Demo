@@ -2,9 +2,9 @@
 
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { ApiError, errorMessage } from "@/lib/api";
+import { ProblemCenter, toastError } from "@/components/ProblemCenter";
+import { ApiError } from "@/lib/api";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -14,7 +14,7 @@ export function Providers({ children }: { children: ReactNode }) {
         mutationCache: new MutationCache({
           onError: (err, _vars, _ctx, mutation) => {
             if (mutation.meta?.silent) return;
-            toast.error(errorMessage(err));
+            toastError(err);
           },
         }),
         defaultOptions: {
@@ -30,6 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={client}>
       {children}
       <Toaster />
+      <ProblemCenter />
     </QueryClientProvider>
   );
 }

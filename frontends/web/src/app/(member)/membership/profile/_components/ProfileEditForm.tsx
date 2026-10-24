@@ -6,6 +6,9 @@ import { FormField, inputClass } from "@/components/form";
 import type { Chapter, ProfileQuestion, Sector } from "@/features/membership/types";
 import type { ProfileForm } from "./profile-form";
 
+/** Same limits as the API's ProfileSchema (backends/src/modules/membership/profile.service.ts). */
+const LIMITS = { bio: 10_000, interests: 60, travelCities: 30 };
+
 /** The "Profile details" editor shown while editing; saving and submitting are handled by the page. */
 export function ProfileEditForm({
   form,
@@ -87,13 +90,13 @@ export function ProfileEditForm({
               onChange={(e) => setForm({ ...form, joinedYear: e.target.value.replace(/[^0-9]/g, "").slice(0, 4) })}
             />
             <FormField
-              label="Interests (comma separated)"
+              label={`Interests (comma separated, up to ${LIMITS.interests})`}
               placeholder="Art, sailing, wine…"
               value={form.interests}
               onChange={(e) => setForm({ ...form, interests: e.target.value })}
             />
             <FormField
-              label="Cities you travel to often (comma separated)"
+              label={`Cities you travel to often (comma separated, up to ${LIMITS.travelCities})`}
               placeholder="New York, Singapore…"
               value={form.travelCities}
               onChange={(e) => setForm({ ...form, travelCities: e.target.value })}
@@ -104,9 +107,13 @@ export function ProfileEditForm({
             <textarea
               className={inputClass}
               rows={4}
+              maxLength={LIMITS.bio}
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
             />
+            <p className="mt-1 text-right text-xs text-muted-foreground">
+              {form.bio.length.toLocaleString()} / {LIMITS.bio.toLocaleString()}
+            </p>
           </div>
           <div className="mt-5">
             <label className="text-sm font-medium">Photo link</label>

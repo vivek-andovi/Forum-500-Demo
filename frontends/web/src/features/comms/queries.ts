@@ -3,7 +3,7 @@
 // Introductions, WhatsApp, email, notifications, actions, concierge and direct messages.
 // Mutations invalidate the queries they affect; errors are toasted globally by the MutationCache
 // in components/providers.tsx, so pages only add their own success toast.
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { POLL_MS, useInvalidate } from "@/lib/query-utils";
@@ -54,6 +54,22 @@ export function useJoinWhatsapp() {
 }
 
 export const useEmails = () => useQuery({ queryKey: qk.emails, queryFn: () => api<EmailCampaign[]>("/v1/emails") });
+
+/** One email with its content. Opening it marks it read, so the list and dashboard are refreshed. */
+export function useEmail(id: string | undefined) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: qk.email(id ?? ""),
+    queryFn: async () => {
+      const email = await api<EmailCampaign>(`/v1/emails/${id}`);
+      // exact: a prefix match on ["emails"] would also refetch this query.
+      void qc.invalidateQueries({ queryKey: qk.emails, exact: true });
+      void qc.invalidateQueries({ queryKey: qk.dashboard });
+      return email;
+    },
+    enabled: !!id,
+  });
+}
 
 export const useNotifications = () =>
   useQuery({ queryKey: qk.notifications, queryFn: () => api<Notification[]>("/v1/notifications") });

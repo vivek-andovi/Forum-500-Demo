@@ -10,6 +10,7 @@ import { parseBody } from '../../core/common/util';
 import { AssetsRepository } from './assets.repository';
 import { MAX_BYTES, sniffMime } from '../../core/storage/file-sniff';
 import { StorageService } from '../../core/storage/storage.service';
+import { env } from '../../core/config/env';
 
 const PresignSchema = z.object({
   filename: z.string().trim().min(1).max(200),
@@ -45,7 +46,8 @@ export class UploadsController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 150e6, files: 1 } }))
+  // On Lambda UPLOAD_MAX_MB is ~4 (6 MB request limit); the admin app sends bigger files through presign/confirm.
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: env().UPLOAD_MAX_MB * 1e6, files: 1 } }))
   async upload(@UploadedFile() file: Express.Multer.File | undefined, @CurrentActor() actor: Actor) {
     if (!file) throw new BadRequestException('No file uploaded (field name must be "file")');
     const mime = sniffMime(file.buffer);
@@ -63,7 +65,11 @@ export class UploadsController {
     return { id: asset.id, url: asset.url };
   }
 
-  /** Step 1 of a direct-to-S3 upload for large files: returns a 5-minute presigned PUT URL. */
+  /**
+   * Step 1 of a direct-to-S3 upload for large files: returns a 5-minute presigned PUT URL.
+   * The admin app uses it for files above the direct-upload limit (UPLOAD_MAX_MB). Needs STORAGE_DRIVER=s3
+   * and a bucket CORS rule allowing PUT from the admin origin.
+   */
   @Post('presign')
   @HttpCode(200)
   async presign(@Body() body: unknown) {

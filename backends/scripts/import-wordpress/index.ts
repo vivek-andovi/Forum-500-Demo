@@ -3,11 +3,13 @@
  * Imports the old forum.club WordPress site into this app (see docs/wordpress-migration/PLAN.md).
  *
  *   npm run wp:import -- --dry-run                 read everything, write nothing, produce the report
- *   npm run wp:import                              import (safe to re-run: updates what it imported before)
+ *   npm run wp:import                              import (safe to re-run: updates what it imported before and nobody changed since)
  *   npm run wp:import -- --only=members,messages   run selected steps
  *   --newsletter-recipients                        also import who received / opened each newsletter (each newsletter is
  *                                                  then shown only to its recipients; by default all members see all of them,
  *                                                  like the old Newsletter Archive)
+ *   --refresh                                      also overwrite rows changed in the app since they were imported
+ *                                                  (by default a re-run keeps admin / member edits)
  *
  * Steps: lookups users members interviews whatsapp messages newsletters magazines podcast library gallery posts projects-csv
  *
@@ -59,6 +61,7 @@ async function main() {
       reportDir,
       prefix: process.env.WP_TABLE_PREFIX ?? 'cnj_',
       newsletterRecipients: arg('newsletter-recipients') === 'true',
+      refresh: arg('refresh') === 'true',
     },
     wpUrl,
   );

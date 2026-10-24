@@ -4,7 +4,7 @@ One git repository holds three independently deployable apps. The layout follows
 
 ```
 forum500-monorepo/
-├── backends/                 NestJS 11 API + Prisma + PostgreSQL   → Docker (Railway/Render/Fly/AWS)
+├── backends/                 NestJS 11 API + Prisma + PostgreSQL   → AWS Lambda (container image)
 │   ├── prisma/schema.prisma  single source of truth for all data (≈50 tables)
 │   ├── prisma/seed/          seeds every record from the Lovable prototype
 │   ├── src/core/             auth, audit, storage (S3), mail (SES), config, health
@@ -12,9 +12,10 @@ forum500-monorepo/
 │   │                         (each: controller → service → repository; DB access only in *.repository.ts)
 │   ├── Dockerfile, docker-compose.yml (local Postgres)
 ├── frontends/
-│   ├── admin/                Next.js admin portal (port 3001)        → Vercel project, root = frontends/admin
-│   └── web/                  Next.js member app + public site (3000) → Vercel project, root = frontends/web
-├── infra/terraform/          Terraform for all AWS resources (staging + production)
+│   ├── admin/                Next.js admin portal (port 3001)        → Cloudflare Workers (planned)
+│   └── web/                  Next.js member app + public site (3002) → Cloudflare Workers (planned)
+├── migrate/                  AWS + Cloudflare setup and data migration scripts (dev); architecture in migrate/README.md
+├── infra/terraform/          older ECS-based Terraform, to be replaced by Plan 2 (docs/deploy-plans)
 ├── docs/
 │   ├── API_CONTRACT.md       every endpoint and response shape
 │   ├── DEPLOYMENT.md         how each app is deployed

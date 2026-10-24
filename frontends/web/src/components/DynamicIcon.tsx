@@ -41,7 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   Users,
 };
 
-export function iconFor(name: string | null | undefined): LucideIcon {
+function iconFor(name: string | null | undefined): LucideIcon {
   return (name && ICONS[name]) || Circle;
 }
 

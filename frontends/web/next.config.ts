@@ -2,13 +2,13 @@ import type { NextConfig } from "next";
 
 // Well-known pages of the old forum.club WordPress site → where they live in this app.
 // Anything not listed here falls through to app/not-found.tsx, which asks the API (/public/redirect).
+// Member profiles (/member/<slug>/) go through the API too: imported slugs don't always match the old ones.
 const legacyRedirects: [source: string, destination: string][] = [
   ["/forum-club", "/dashboard"],
   ["/forum-directory-2", "/membership"],
   ["/forum-members-directory-categories", "/membership"],
   ["/member-category/:slug*", "/membership"],
   ["/region/:slug*", "/membership"],
-  ["/member/:slug", "/membership/:slug"],
   ["/whatsapp-groups", "/comms/whatsapp"],
   ["/account/messages", "/comms/messages"],
   ["/account/messages/:path*", "/comms/messages"],
