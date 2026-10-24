@@ -25,8 +25,8 @@ export interface FieldMeta {
 }
 
 const AUDIT = new Set<string>(AUDIT_FIELDS);
-/** Audit actor columns, shown in "Record details" as a link to the user. */
-export const ACTOR_FIELDS = ['createdBy', 'updatedBy'] as const;
+/** Columns holding a User id (free text), shown as the user's email with a link to the user. */
+export const USER_FIELDS = ['createdBy', 'updatedBy', 'uploadedBy'] as const;
 
 export interface RelationInfo {
   fk: string;
@@ -58,6 +58,21 @@ export class AdminMetadataService {
 
   model(res: ResourceConfig): DmmfModel {
     return this.models.get(res.model)!;
+  }
+
+  /** DMMF model by name (e.g. "Chapter"), or undefined. */
+  modelByName(name: string): DmmfModel | undefined {
+    return this.models.get(name);
+  }
+
+  /** The admin resource exposing a model, or undefined. */
+  resourceForModel(model: string): ResourceConfig | undefined {
+    return this.byModel.get(model);
+  }
+
+  /** Resource by name without throwing (audit entries may name a removed resource). */
+  findResource(name: string): ResourceConfig | undefined {
+    return this.byName.get(name);
   }
 
   /** Values of a Prisma enum, e.g. enumValues('EventStatus'). */
@@ -93,9 +108,11 @@ export class AdminMetadataService {
     const readOnly =
       f.isId || f.isUpdatedAt || f.name === 'createdAt' || AUDIT.has(f.name) || createOnly || !!res.readOnlyFields?.includes(f.name);
     const rel = rels.find((r) => r.fk === f.name);
-    const actor = (ACTOR_FIELDS as readonly string[]).includes(f.name);
+    const user = (USER_FIELDS as readonly string[]).includes(f.name);
+    // Ids labelled by admin-labels.service (no Prisma relation): show the label, not the id.
+    const labelled = !!res.idLabels?.from?.[f.name] || res.idLabels?.polymorphic?.field === f.name;
     let type: FieldMeta['type'] = 'string';
-    if (rel || actor) type = 'relation';
+    if (rel || user || labelled) type = 'relation';
     else if (f.kind === 'enum') type = 'enum';
     else if (f.type === 'Int') type = 'int';
     else if (f.type === 'Float' || f.type === 'Decimal') type = 'float';
@@ -117,7 +134,7 @@ export class AdminMetadataService {
       enumValues: f.kind === 'enum' ? this.enums.get(f.type) : undefined,
       relation: rel
         ? { resource: rel.resource.name, labelField: this.labelFieldOf(rel.resource) }
-        : actor ? { resource: 'users', labelField: 'email' } : undefined,
+        : user ? { resource: 'users', labelField: 'email' } : undefined,
       createOnly: createOnly || undefined,
       default:
         f.hasDefaultValue && (typeof f.default !== 'object' || Array.isArray(f.default))
@@ -195,7 +212,7 @@ export class AdminMetadataService {
     out._relations = relLabels;
     out._label = lf
       ? String(row[lf] ?? '').slice(0, 120)
-      : Object.values(relLabels).filter(Boolean).join(' · ') || row.id || row.key;
+      : Object.values(relLabels).filter(Boolean).join(' · ') || res.singular;
     return out;
   }
 }

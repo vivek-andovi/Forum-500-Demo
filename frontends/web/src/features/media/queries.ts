@@ -99,6 +99,13 @@ export const useArticles = (publication?: string) =>
     queryFn: () => api<Article[]>("/v1/articles", { query: { publication } }),
   });
 
+export const useArticle = (slug: string) =>
+  useQuery({
+    queryKey: qk.article(slug),
+    queryFn: () => api<Article>(`/v1/articles/${encodeURIComponent(slug)}`),
+    enabled: !!slug,
+  });
+
 export const useFeed = () => useQuery({ queryKey: qk.feed, queryFn: () => api<FeedResponse>("/v1/feed") });
 
 export function usePostFeed() {

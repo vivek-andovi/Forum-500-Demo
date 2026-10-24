@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QueryState } from "@/components/QueryState";
 import { MemberAvatar } from "@/components/Avatar";
 import { useMembers, useNewMembers } from "@/features/membership/queries";
 import { useLookups } from "@/features/site/queries";
+
+const PAGE_SIZE = 24;
 
 function useDebounced<T>(value: T, ms = 300): T {
   const [v, setV] = useState(value);
@@ -22,6 +24,8 @@ export default function MembershipDirectoryPage() {
   const [query, setQuery] = useState("");
   const [sectorId, setSectorId] = useState("");
   const [chapterId, setChapterId] = useState("");
+  const [interest, setInterest] = useState("");
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const [newMembersOpen, setNewMembersOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const search = useDebounced(query.trim());
@@ -42,7 +46,25 @@ export default function MembershipDirectoryPage() {
     el.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" });
   };
 
-  const results = membersQ.data ?? [];
+  const loaded = useMemo(() => membersQ.data ?? [], [membersQ.data]);
+  // Interest is filtered here (the list already holds every match) so its options come from the loaded members.
+  const interestOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of loaded) for (const i of m.interests) if (i.trim()) set.add(i.trim());
+    if (interest) set.add(interest);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [loaded, interest]);
+  const results = useMemo(
+    () => (interest ? loaded.filter((m) => m.interests.some((i) => i.trim() === interest)) : loaded),
+    [loaded, interest],
+  );
+  const shown = results.slice(0, visible);
+
+  // Start from the first page whenever the filters change.
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+  }, [search, sectorId, chapterId, interest]);
+
   const intake = newMembers.data ?? [];
 
   return (
@@ -187,6 +209,19 @@ export default function MembershipDirectoryPage() {
             </option>
           ))}
         </select>
+        <select
+          value={interest}
+          onChange={(e) => setInterest(e.target.value)}
+          aria-label="Filter by interest"
+          className="rounded-md border border-input bg-card px-3 py-2.5 text-sm sm:max-w-[14rem]"
+        >
+          <option value="">All interests</option>
+          {interestOptions.map((i) => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+        </select>
       </div>
 
       <QueryState
@@ -200,7 +235,7 @@ export default function MembershipDirectoryPage() {
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map((m) => (
+          {shown.map((m) => (
             <Link
               key={m.id}
               href={`/membership/${m.slug}`}
@@ -208,13 +243,29 @@ export default function MembershipDirectoryPage() {
             >
               <MemberAvatar src={m.avatarUrl} name={m.fullName} className="h-12 w-12 rounded-full border border-border" />
               <h3 className="mt-3 font-display text-lg font-medium">{m.fullName}</h3>
-              <p className="text-sm text-muted-foreground">{[m.headline, m.company].filter(Boolean).join(", ")}</p>
+              <p className="text-sm text-muted-foreground">
+                {[m.headline, m.company].filter(Boolean).join(", ") || m.positionLine}
+              </p>
               <p className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">
                 {[m.chapter?.name, m.sector?.name].filter(Boolean).join(" · ")}
               </p>
             </Link>
           ))}
         </div>
+        {results.length > shown.length && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="rounded-md border border-border bg-card px-5 py-2.5 text-sm font-semibold transition-colors hover:border-accent hover:text-accent"
+            >
+              Show more
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Showing {shown.length} of {results.length}
+            </p>
+          </div>
+        )}
       </QueryState>
     </div>
   );

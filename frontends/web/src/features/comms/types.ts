@@ -60,6 +60,8 @@ export interface EmailCampaign extends Timestamps {
   senderLabel: string;
   preview: string | null;
   body: string | null;
+  /** Full newsletter HTML document (imported archive); render sandboxed. */
+  html: string | null;
   status: "draft" | "scheduled" | "sent";
   scheduledAt: ISODate | null;
   sentAt: ISODate | null;
@@ -163,6 +165,8 @@ export interface GroupChatMessage {
 }
 
 export interface WhatsappResponse {
+  /** When true every group carries its inviteLink and members join directly in WhatsApp. */
+  openAccess: boolean;
   groups: WhatsappGroup[];
   memberships: WhatsappMembership[];
 }

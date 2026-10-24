@@ -10,7 +10,7 @@
 | Passwords hashed with **argon2id** | `auth.service.ts` |
 | Password policy: 10+ chars, letter + number (API and UI) | `common/util.ts → passwordSchema` |
 | Lockout for 15 min after 5 failed logins; timing-equalised for unknown emails | `AuthService.login` |
-| JWT HS256 with issuer/audience checks; expiry `JWT_EXPIRES_IN` (default 1 day) | `auth.module.ts` |
+| JWT HS256 with issuer/audience checks; expiry `JWT_EXPIRES_IN` (default 60 days; revocable at any time via `tokenVersion`) | `auth.module.ts` |
 | **Instant revocation**: every request re-checks user status and `tokenVersion`. Suspending, changing role, changing password or "sign out everywhere" kills existing tokens | `auth.guard.ts` |
 | Invite and reset links: 32-byte random, **only the SHA-256 hash is stored**, single-use, expire after 7 days (invite) or 1 hour (reset) | `AuthToken`, `AuthService.createToken` |
 | Forgot-password gives the same response whether or not the email exists | `AuthService.forgotPassword` |

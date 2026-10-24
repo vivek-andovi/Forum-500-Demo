@@ -79,6 +79,13 @@ enum EventKind {
   Dinner
   Reception
   Roundtable
+  Breakfast
+  Lunch
+  Brunch
+  Drinks
+  Conference
+  Party
+  Other
 }
 
 enum RsvpStatus {
@@ -107,6 +114,8 @@ enum Publication {
   inforum
   forecast
   member
+  /// Write-up of a club event (salon, breakfast, talk).
+  report
 }
 
 enum PitchFormat {
@@ -134,6 +143,10 @@ enum CommentTarget {
 enum LibraryKind {
   Annual_Report
   Journal
+  audio
+  video
+  document
+  link
 }
 
 enum IntroductionStatus {
@@ -215,6 +228,8 @@ model User {
 enum AuthTokenType {
   invite
   password_reset
+  /// One-click sign-in link emailed on request (passwordless login).
+  magic_link
 }
 
 /// One-time tokens for invite (set first password) and password-reset links.
@@ -270,7 +285,8 @@ model Sector {
   updatedBy String?
   deletedBy String?
 
-  members Member[]
+  members       Member[]
+  memberSectors MemberSector[]
 }
 
 model MembershipTier {
@@ -307,39 +323,44 @@ model ProfileQuestion {
 }
 
 model Member {
-  id                String        @id @default(uuid()) @db.Uuid
-  userId            String?       @unique @db.Uuid
-  slug              String        @unique
-  fullName          String
-  headline          String?
-  company           String?
-  email             String?
-  phone             String?
-  bio               String?
-  avatarUrl         String?
-  linkedinUrl       String?
-  interests         String[]      @default([])
-  travelCities      String[]      @default([])
-  joinedYear        Int?
-  chapterId         String?       @db.Uuid
-  sectorId          String?       @db.Uuid
-  tierId            String?       @db.Uuid
-  isPublished       Boolean       @default(true)
-  profileStatus     ProfileStatus @default(published)
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String?       @unique @db.Uuid
+  slug               String        @unique
+  fullName           String
+  headline           String?
+  company            String?
+  email              String?
+  phone              String?
+  bio                String?
+  avatarUrl          String?
+  linkedinUrl        String?
+  interests          String[]      @default([])
+  travelCities       String[]      @default([])
+  joinedYear         Int?
+  /// Full position line as entered, e.g. "LONDON | Chairman | Acme | Private Equity".
+  positionLine       String?
+  /// What the company does (the part of the position line after the company name).
+  companyDescription String?
+  verified           Boolean       @default(false)
+  chapterId          String?       @db.Uuid
+  sectorId           String?       @db.Uuid
+  tierId             String?       @db.Uuid
+  isPublished        Boolean       @default(true)
+  profileStatus      ProfileStatus @default(published)
   /// Featured in "New Members" carousel + dashboard.
-  featuredNewMember Boolean       @default(false)
+  featuredNewMember  Boolean       @default(false)
   /// Featured Q&A shown on the New Members card.
-  spotlightQuestion String?
-  spotlightAnswer   String?
+  spotlightQuestion  String?
+  spotlightAnswer    String?
   /// Unsubmitted edits of a published member (ProfileInput JSON). Never shown to other members;
   /// goes live only via "Submit for review" → ProfileRevision → admin approval.
-  profileDraft      Json?
-  createdAt         DateTime      @default(now()) @db.Timestamptz
-  updatedAt         DateTime      @updatedAt @db.Timestamptz
-  deletedAt         DateTime?     @db.Timestamptz
-  createdBy         String?
-  updatedBy         String?
-  deletedBy         String?
+  profileDraft       Json?
+  createdAt          DateTime      @default(now()) @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @db.Timestamptz
+  deletedAt          DateTime?     @db.Timestamptz
+  createdBy          String?
+  updatedBy          String?
+  deletedBy          String?
 
   user    User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   chapter Chapter?        @relation(fields: [chapterId], references: [id], onDelete: SetNull)
@@ -348,6 +369,8 @@ model Member {
 
   answers              MemberQuestionAnswer[]
   interviews           MemberInterviewQA[]
+  sectors              MemberSector[]
+  subscriber           Subscriber?
   revisions            ProfileRevision[]
   benefitOffers        BenefitOffer[]
   benefitOptIns        BenefitOptIn[]
@@ -380,6 +403,25 @@ model Member {
   sentMessages         Message[]
   whatsappMessages     WhatsappMessage[]
   applicationsReferred Application[]
+}
+
+/// All sectors a member works in (Member.sectorId stays the primary one).
+model MemberSector {
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @db.Uuid
+  sectorId  String    @db.Uuid
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, sectorId])
 }
 
 model MemberQuestionAnswer {
@@ -761,6 +803,8 @@ model InforumEdition {
   publishedOn DateTime      @db.Timestamptz
   coverLine   String?
   coverUrl    String?
+  /// The printed edition as a PDF.
+  pdfUrl      String?
   status      ContentStatus @default(published)
   visibility  Visibility    @default(members)
   createdAt   DateTime      @default(now()) @db.Timestamptz
@@ -950,6 +994,8 @@ model PodcastEpisode {
   guestName       String
   guestMemberId   String?       @db.Uuid
   durationMinutes Int?
+  /// Season / series number, e.g. 4 for "Series Four".
+  series          Int?
   audioUrl        String?
   spotifyUrl      String?
   appleUrl        String?
@@ -1014,22 +1060,29 @@ model BookRecommendation {
 }
 
 model LibraryItem {
-  id          String        @id @default(uuid()) @db.Uuid
-  slug        String        @unique
-  title       String
-  kind        LibraryKind
-  pages       Int?
-  description String?
-  coverUrl    String?
-  fileUrl     String?
-  status      ContentStatus @default(published)
-  publishedAt DateTime?     @db.Timestamptz
-  createdAt   DateTime      @default(now()) @db.Timestamptz
-  updatedAt   DateTime      @updatedAt @db.Timestamptz
-  deletedAt   DateTime?     @db.Timestamptz
-  createdBy   String?
-  updatedBy   String?
-  deletedBy   String?
+  id            String        @id @default(uuid()) @db.Uuid
+  slug          String        @unique
+  title         String
+  kind          LibraryKind
+  pages         Int?
+  description   String?
+  coverUrl      String?
+  /// Download (document) or destination (link) URL.
+  fileUrl       String?
+  /// Audio or video file played inline (kind audio / video).
+  mediaUrl      String?
+  speaker       String?
+  /// e.g. "6 min 27 secs".
+  durationLabel String?
+  recordedOn    DateTime?     @db.Timestamptz
+  status        ContentStatus @default(published)
+  publishedAt   DateTime?     @db.Timestamptz
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @db.Timestamptz
+  deletedAt     DateTime?     @db.Timestamptz
+  createdBy     String?
+  updatedBy     String?
+  deletedBy     String?
 }
 
 model FeedPost {
@@ -1140,6 +1193,8 @@ model EmailCampaign {
   senderLabel String         @default("Forum Team")
   preview     String?
   body        String?
+  /// Full email HTML (e.g. imported newsletters); shown instead of `body` when present.
+  html        String?
   audience    Json?
   status      CampaignStatus @default(draft)
   scheduledAt DateTime?      @db.Timestamptz
@@ -1474,4 +1529,50 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+/// Newsletter recipient. Members are linked; non-members (e.g. imported list subscribers) are not.
+model Subscriber {
+  id        String    @id @default(uuid()) @db.Uuid
+  email     String    @unique
+  name      String?
+  /// subscribed | unsubscribed | unconfirmed | bounced | inactive
+  status    String    @default("subscribed")
+  lists     String[]  @default([])
+  source    String?
+  memberId  String?   @unique @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+}
+
+/// Which record an imported legacy row (e.g. WordPress post 123) became. Makes imports re-runnable
+/// and drives redirects from old URLs.
+model LegacyMap {
+  id        String    @id @default(uuid()) @db.Uuid
+  /// Source system, e.g. "wordpress".
+  source    String    @default("wordpress")
+  /// Legacy entity, e.g. "user", "listing", "attachment", "message".
+  entity    String
+  legacyId  String
+  /// Target model and id.
+  model     String
+  newId     String
+  /// Old public URL (for redirects) and its replacement.
+  oldUrl    String?
+  newUrl    String?
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
+
+  @@unique([source, entity, legacyId])
+  @@index([oldUrl])
 }

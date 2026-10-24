@@ -24,6 +24,18 @@ export interface ResourceConfig {
   readOnlyFields?: string[];
   /** Fields set on create and read-only afterwards (e.g. Setting.key, which code looks up). */
   createOnlyFields?: string[];
+  /**
+   * How the admin shows ids that are not plain relations (see admin-labels.service):
+   *  - `from`: an id column displayed via another column of the same row (a stored snapshot)
+   *  - `polymorphic`: an id whose target model depends on a type column
+   *  - `json`: JSON columns whose keys are field names of the given model, so ids inside them
+   *    are shown by name; 'audit' = an audit `changes` array for the row's `entity` resource
+   */
+  idLabels?: {
+    from?: Record<string, string>;
+    polymorphic?: { field: string; typeField: string; models: Record<string, string> };
+    json?: Record<string, string>;
+  };
   /** Fields hidden from forms and API responses. */
   hidden?: string[];
   /**

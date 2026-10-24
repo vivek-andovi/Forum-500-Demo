@@ -26,7 +26,7 @@
         { "name": "ASSET_PUBLIC_BASE_URL", "value": "https://assets.forum500.club" },
         { "name": "MAIL_DRIVER", "value": "ses" },
         { "name": "MAIL_FROM", "value": "Forum500 <no-reply@forum500.club>" },
-        { "name": "JWT_EXPIRES_IN", "value": "1d" },
+        { "name": "JWT_EXPIRES_IN", "value": "60d" },
         { "name": "RATE_LIMIT_PER_MINUTE", "value": "300" }
       ],
       "secrets": [

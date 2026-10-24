@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { formatDateTime, humanize } from "@/lib/format";
+import { formatDateTime, humanize, withRefLabels } from "@/lib/format";
+import { ReadableValue } from "@/components/common/readable-value";
 import { recordHref } from "@/lib/meta";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ExtrasProps } from "@/components/resource/extras/types";
@@ -11,7 +12,7 @@ function renderAuditValue(v: unknown) {
   if (v === null || v === undefined || v === "") return <span className="text-muted-foreground/70">—</span>;
   if (typeof v === "boolean") return v ? "Yes" : "No";
   if (Array.isArray(v)) return v.length ? v.join(", ") : <span className="text-muted-foreground/70">—</span>;
-  if (typeof v === "object") return <code className="text-xs">{JSON.stringify(v)}</code>;
+  if (typeof v === "object") return <ReadableValue value={v} />;
   const str = String(v);
   if (/^\d{4}-\d{2}-\d{2}T/.test(str)) return formatDateTime(str);
   return str;
@@ -19,7 +20,8 @@ function renderAuditValue(v: unknown) {
 
 /** Read-only view of one audit entry (the generic form is hidden via `hideForm` in the registry). */
 export function AuditDetail({ record }: ExtrasProps) {
-  const changes = (Array.isArray(record.changes) ? record.changes : []) as AuditChange[];
+  // Linked-record ids in before/after (e.g. a changed chapter) are shown by name via `_refs`.
+  const changes = withRefLabels((Array.isArray(record.changes) ? record.changes : []) as AuditChange[], record._refs);
   const who = [record.actorName, record.actorEmail].filter(Boolean).join(" · ") || "System";
   const entityLink =
     record.entityId && record.action !== "delete" && record.entity

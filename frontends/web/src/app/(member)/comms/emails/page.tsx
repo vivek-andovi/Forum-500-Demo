@@ -9,6 +9,14 @@ import { useEmails } from "@/features/comms/queries";
 import { fmtDate, timeAgo } from "@/lib/format";
 import type { EmailCampaign } from "@/features/comms/types";
 
+/** Opens links from an archived newsletter in a new tab (the iframe itself is sandboxed). */
+function withBaseTarget(html: string): string {
+  const base = '<base target="_blank">';
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, (m) => `${m}${base}`);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, (m) => `${m}<head>${base}</head>`);
+  return `<!doctype html><html><head>${base}</head><body>${html}</body></html>`;
+}
+
 export default function EmailsPage() {
   const { data: emails = [], isLoading, error } = useEmails();
   const [open, setOpen] = useState<EmailCampaign | null>(null);
@@ -55,7 +63,7 @@ export default function EmailsPage() {
       </QueryState>
 
       <Dialog open={open !== null} onOpenChange={(v) => !v && setOpen(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className={`max-h-[90vh] overflow-y-auto ${open?.html ? "sm:max-w-3xl" : "sm:max-w-2xl"}`}>
           <DialogHeader>
             <DialogTitle>{open?.subject}</DialogTitle>
             <DialogDescription>
@@ -65,9 +73,19 @@ export default function EmailsPage() {
                 : ""}
             </DialogDescription>
           </DialogHeader>
-          <div className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
-            {open?.body || open?.preview || "This email has no content."}
-          </div>
+          {open?.html ? (
+            <iframe
+              title={open.subject}
+              srcDoc={withBaseTarget(open.html)}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              referrerPolicy="no-referrer"
+              className="h-[65vh] w-full rounded-md border border-border bg-white"
+            />
+          ) : (
+            <div className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+              {open?.body || open?.preview || "This email has no content."}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

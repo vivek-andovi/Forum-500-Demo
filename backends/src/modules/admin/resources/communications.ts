@@ -29,6 +29,22 @@ export const COMMUNICATIONS_RESOURCES: ResourceConfig[] = [
     defaultSort: { field: 'createdAt', order: 'desc' },
   },
   {
+    name: 'subscribers', model: 'Subscriber', label: 'Newsletter Subscribers', singular: 'Subscriber', group: 'Communications',
+    labelField: 'email',
+    listColumns: ['email', 'name', 'status', 'lists', 'memberId', 'source', 'createdAt'],
+    searchFields: ['email', 'name'],
+    defaultSort: { field: 'email', order: 'asc' },
+  },
+  {
+    // Members' private messages, read-only (the old site let admins monitor messages).
+    name: 'direct-messages', model: 'Message', label: 'Direct Messages', singular: 'Message', group: 'Communications',
+    labelField: 'body',
+    listColumns: ['createdAt', 'senderId', 'conversationId', 'body'],
+    searchFields: ['body'],
+    readOnly: true,
+    defaultSort: { field: 'createdAt', order: 'desc' },
+  },
+  {
     name: 'notifications', model: 'Notification', label: 'Notifications', singular: 'Notification', group: 'Communications',
     labelField: 'title',
     listColumns: ['title', 'type', 'memberId', 'readAt', 'createdAt'],

@@ -38,6 +38,7 @@ export function EditorHeader({
   onStatusChange,
   onDelete,
   submitting,
+  canSave,
 }: {
   resource: ResourceMeta;
   title: string;
@@ -48,6 +49,8 @@ export function EditorHeader({
   onStatusChange: (status: string) => void;
   onDelete: () => void;
   submitting: boolean;
+  /** False when the form has no editable fields (e.g. workflow-only resources). */
+  canSave: boolean;
 }) {
   const readOnlyResource = !!resource.readOnly;
   return (
@@ -94,7 +97,7 @@ export function EditorHeader({
               <Trash2 /> Delete
             </Button>
           )}
-          {!readOnlyResource && (
+          {!readOnlyResource && canSave && (
             <Button type="submit" disabled={submitting}>
               {submitting ? <Loader2 className="animate-spin" /> : <Save />}
               {isNew ? "Create" : "Save"}

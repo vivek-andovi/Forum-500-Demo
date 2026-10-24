@@ -75,6 +75,16 @@ export class MailService {
     });
   }
 
+  sendMagicLink(to: string, link: string) {
+    const lines = ['Use the link below to sign in to Forum500.', 'The link works once and expires in 15 minutes. If you did not ask for it, you can ignore this email.'];
+    return this.send({
+      to,
+      subject: 'Your Forum500 sign-in link',
+      text: `${lines.join('\n\n')}\n\n${link}`,
+      html: this.layout('Sign in to Forum500', lines, { label: 'Sign in', url: link }),
+    });
+  }
+
   sendApplicationDecision(to: string, name: string, status: 'rejected' | 'waitlisted', note?: string | null) {
     const lines = [
       `Dear ${name},`,

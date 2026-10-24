@@ -6,9 +6,9 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 export class WhatsappRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  listActiveGroups() {
+  listActiveGroups(withInviteLinks = false) {
     return this.prisma.whatsappGroup.findMany({
-      where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], omit: { inviteLink: true },
+      where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], omit: { inviteLink: !withInviteLinks },
     });
   }
 

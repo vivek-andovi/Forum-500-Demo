@@ -8,6 +8,7 @@ import { setToken, errorMessage } from "@/lib/api";
 import { useLogin } from "@/features/auth/queries";
 import { safePath, useToken } from "@/hooks/useAuth";
 import { FormField, inputClass, primaryButtonClass } from "@/components/form";
+import { MagicLinkForm } from "./_components/MagicLinkForm";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -88,6 +89,9 @@ export default function AuthPage() {
             {busy ? "One moment…" : "Sign in"}
           </button>
         </form>
+        <div className="mt-4">
+          <MagicLinkForm initialEmail={email} />
+        </div>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Interested in joining?{" "}
           <Link href="/apply" className="font-semibold text-accent hover:underline">

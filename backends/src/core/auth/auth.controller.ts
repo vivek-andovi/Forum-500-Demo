@@ -8,6 +8,7 @@ import { AuthUser, CurrentUser, Public } from './decorators';
 
 const LoginSchema = z.object({ email: z.string().trim().email().max(200), password: z.string().min(1).max(200) });
 const EmailSchema = z.object({ email: z.string().trim().email().max(200) });
+const TokenSchema = z.object({ token: z.string().min(20).max(200) });
 const SetPasswordSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
 const ChangePasswordSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: passwordSchema });
 
@@ -33,6 +34,24 @@ export class AuthController {
   @HttpCode(200)
   forgot(@Body() body: unknown) {
     return this.auth.forgotPassword(parseBody(EmailSchema, body).email);
+  }
+
+  /** Email a one-click sign-in link. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('magic-link')
+  @HttpCode(200)
+  magicLink(@Body() body: unknown) {
+    return this.auth.requestMagicLink(parseBody(EmailSchema, body).email);
+  }
+
+  /** Sign in with the token from a magic link. */
+  @Public()
+  @Throttle(STRICT)
+  @Post('magic-link/consume')
+  @HttpCode(200)
+  consumeMagicLink(@Body() body: unknown) {
+    return this.auth.consumeMagicLink(parseBody(TokenSchema, body).token);
   }
 
   /** Accept an invite or complete a password reset (same token mechanism). */

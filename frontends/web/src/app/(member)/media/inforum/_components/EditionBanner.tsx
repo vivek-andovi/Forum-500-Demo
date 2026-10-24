@@ -1,3 +1,4 @@
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InforumEdition } from "@/features/media/types";
 import { fmtDate } from "@/lib/format";
@@ -27,10 +28,21 @@ export function EditionBanner({
           <p className="text-sm text-muted-foreground">Published {fmtDate(edition.publishedOn, "d MMMM yyyy")}</p>
         ) : null}
       </div>
-      {!isCurrent ? (
-        <Button variant="outline" onClick={onBackToCurrent}>
-          Back to current edition
-        </Button>
+      {edition?.pdfUrl || !isCurrent ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {edition?.pdfUrl ? (
+            <Button asChild variant="outline">
+              <a href={edition.pdfUrl} target="_blank" rel="noopener noreferrer">
+                <FileText className="h-4 w-4" /> Read the PDF
+              </a>
+            </Button>
+          ) : null}
+          {!isCurrent ? (
+            <Button variant="outline" onClick={onBackToCurrent}>
+              Back to current edition
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

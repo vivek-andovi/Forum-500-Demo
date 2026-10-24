@@ -2,7 +2,18 @@
 import type { ContentStatus, ISODate, Timestamps, Visibility } from "@/lib/types/common";
 import type { Member } from "@/features/membership/types";
 
-export type EventKind = "Salon" | "Dinner" | "Reception" | "Roundtable";
+export type EventKind =
+  | "Salon"
+  | "Dinner"
+  | "Reception"
+  | "Roundtable"
+  | "Breakfast"
+  | "Lunch"
+  | "Brunch"
+  | "Drinks"
+  | "Conference"
+  | "Party"
+  | "Other";
 
 export type RsvpStatus = "interested" | "confirmed" | "waitlisted" | "declined" | "cancelled";
 

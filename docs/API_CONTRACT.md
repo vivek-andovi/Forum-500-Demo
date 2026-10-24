@@ -43,7 +43,7 @@
 - **`POST /auth/logout-all`** (Bearer token): invalidates every token the user holds.
 
 ### Tokens
-- Send as `Authorization: Bearer <accessToken>`. Lifetime is `JWT_EXPIRES_IN` (default 1 day).
+- Send as `Authorization: Bearer <accessToken>`. Lifetime is `JWT_EXPIRES_IN` (default 60 days, matching the old forum.club site).
 - Tokens stop working immediately when an admin suspends the user, changes their role or password, or uses "sign out everywhere".
 
 ### Which token each route needs

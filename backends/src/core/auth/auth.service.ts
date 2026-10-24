@@ -8,10 +8,11 @@ import { env } from '../config/env';
 import { MailService } from '../mail/mail.service';
 import { AuthRepository } from './auth.repository';
 import { AuthUser } from './decorators';
+import { isLegacyHash, verifyLegacyPassword } from './legacy-password';
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
-const TOKEN_TTL_HOURS: Record<AuthTokenType, number> = { invite: 24 * 7, password_reset: 1 };
+const TOKEN_TTL_HOURS: Record<AuthTokenType, number> = { invite: 24 * 7, password_reset: 1, magic_link: 0.25 };
 const hashToken = (t: string) => createHash('sha256').update(t).digest('hex');
 
 @Injectable()
@@ -34,6 +35,11 @@ export class AuthService {
     return { accessToken, user: { id: user.id, email: user.email, role: user.role }, member: user.member };
   }
 
+  /** argon2, or a hash imported from the old WordPress site (upgraded on the next successful login). */
+  private checkPassword(hash: string, password: string) {
+    return isLegacyHash(hash) ? verifyLegacyPassword(password, hash) : argon2.verify(hash, password);
+  }
+
   async login(email: string, password: string) {
     const user = await this.users.findByEmailWithMember(email.trim().toLowerCase());
     const fail = new UnauthorizedException('Invalid email or password');
@@ -44,7 +50,7 @@ export class AuthService {
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new UnauthorizedException(`Too many failed attempts. Try again after ${user.lockedUntil.toISOString().slice(11, 16)} UTC.`);
     }
-    if (!(await argon2.verify(user.passwordHash, password))) {
+    if (!(await this.checkPassword(user.passwordHash, password))) {
       const failed = user.failedLogins + 1;
       await this.users.updateUser(user.id, {
         failedLogins: failed >= MAX_FAILED_LOGINS ? 0 : failed,
@@ -58,8 +64,31 @@ export class AuthService {
     requestContext.setUser(user.id); // public route: the user is the actor from here on
     const updated = await this.users.updateUserWithMember(user.id, {
       lastLoginAt: new Date(), status: 'active', failedLogins: 0, lockedUntil: null,
+      ...(isLegacyHash(user.passwordHash) && { passwordHash: await argon2.hash(password) }),
     });
     return this.session(updated, await this.issue(updated));
+  }
+
+  /** Email a one-click sign-in link (the old site's "magic login"). Same response whether or not the email exists. */
+  async requestMagicLink(email: string) {
+    const user = await this.users.findByEmail(email.trim().toLowerCase());
+    if (user && user.status !== 'suspended') {
+      const raw = await this.createToken(user.id, 'magic_link');
+      await this.mail.sendMagicLink(user.email, `${env().WEB_APP_URL}/auth/magic?token=${raw}`);
+    }
+    return { ok: true, message: 'If that email belongs to an account, a sign-in link is on its way.' };
+  }
+
+  async consumeMagicLink(rawToken: string) {
+    const token = await this.users.findToken(hashToken(rawToken));
+    if (!token || token.type !== 'magic_link' || token.usedAt || token.expiresAt < new Date()) {
+      throw new BadRequestException('This sign-in link is invalid or has expired. Please request a new one.');
+    }
+    const owner = await this.users.findById(token.userId);
+    if (!owner || owner.status === 'suspended') throw new UnauthorizedException('This account is suspended');
+    requestContext.setUser(owner.id);
+    const user = await this.users.consumeMagicToken(token.id, token.userId);
+    return this.session(user, await this.issue(user));
   }
 
   async me(auth: AuthUser) {
@@ -99,7 +128,7 @@ export class AuthService {
   /** Consume an invite or reset token and set the password. */
   async setPassword(rawToken: string, password: string) {
     const token = await this.users.findToken(hashToken(rawToken));
-    if (!token || token.usedAt || token.expiresAt < new Date()) {
+    if (!token || token.type === 'magic_link' || token.usedAt || token.expiresAt < new Date()) {
       throw new BadRequestException('This link is invalid or has expired. Please request a new one.');
     }
     // Check before consuming: consuming the token marks the user active, which would undo a suspension.
@@ -112,7 +141,7 @@ export class AuthService {
 
   async changePassword(auth: AuthUser, current: string, next: string) {
     const user = await this.users.findById(auth.id);
-    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, current))) {
+    if (!user?.passwordHash || !(await this.checkPassword(user.passwordHash, current))) {
       throw new BadRequestException('Current password is incorrect');
     }
     const updated = await this.users.updateUserWithMember(user.id, {

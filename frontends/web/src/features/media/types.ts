@@ -1,11 +1,12 @@
 // In:Forum, Forecast, articles, podcasts, books, library, newsfeed and comments.
 import type { ContentStatus, ISODate, Timestamps, Visibility } from "@/lib/types/common";
 
-export type Publication = "inforum" | "forecast" | "member";
+/** `report` = write-ups of club events. */
+export type Publication = "inforum" | "forecast" | "member" | "report";
 
 export type RecommendationCategory = "eat" | "stay" | "travel" | "read";
 
-export type LibraryKind = "Annual_Report" | "Journal";
+export type LibraryKind = "Annual_Report" | "Journal" | "audio" | "video" | "document" | "link";
 
 export interface InforumSection extends Timestamps {
   id: string;
@@ -50,6 +51,7 @@ export interface InforumEdition extends Timestamps {
   publishedOn: ISODate;
   coverLine: string | null;
   coverUrl: string | null;
+  pdfUrl: string | null;
   status: ContentStatus;
   visibility: Visibility;
   articles?: Article[];
@@ -104,6 +106,7 @@ export interface PodcastEpisode extends Timestamps {
   id: string;
   slug: string;
   number: number;
+  series: number | null;
   title: string;
   description: string | null;
   guestName: string;
@@ -152,7 +155,13 @@ export interface LibraryItem extends Timestamps {
   pages: number | null;
   description: string | null;
   coverUrl: string | null;
+  /** Download (document, report, journal) or destination (link). */
   fileUrl: string | null;
+  /** Audio / video source. */
+  mediaUrl: string | null;
+  speaker: string | null;
+  durationLabel: string | null;
+  recordedOn: ISODate | null;
   status: ContentStatus;
   publishedAt: ISODate | null;
 }

@@ -8,20 +8,25 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 export class MembersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  listPublished(filter: { search?: string; sectorId?: string; chapterId?: string }) {
-    const where: Prisma.MemberWhereInput = { isPublished: true };
-    if (filter.sectorId) where.sectorId = filter.sectorId;
-    if (filter.chapterId) where.chapterId = filter.chapterId;
+  listPublished(filter: { search?: string; sectorId?: string; chapterId?: string; interest?: string }) {
+    const and: Prisma.MemberWhereInput[] = [{ isPublished: true }];
+    // A member matches a sector if it is their primary sector or one of their other sectors.
+    if (filter.sectorId) and.push({ OR: [{ sectorId: filter.sectorId }, { sectors: { some: { sectorId: filter.sectorId } } }] });
+    if (filter.chapterId) and.push({ chapterId: filter.chapterId });
+    if (filter.interest) and.push({ interests: { has: filter.interest } });
     if (filter.search) {
-      where.OR = [
-        { fullName: { contains: filter.search, mode: 'insensitive' } },
-        { headline: { contains: filter.search, mode: 'insensitive' } },
-        { company: { contains: filter.search, mode: 'insensitive' } },
-        { interests: { has: filter.search } },
-      ];
+      and.push({
+        OR: [
+          { fullName: { contains: filter.search, mode: 'insensitive' } },
+          { headline: { contains: filter.search, mode: 'insensitive' } },
+          { company: { contains: filter.search, mode: 'insensitive' } },
+          { interests: { has: filter.search } },
+        ],
+      });
     }
     return this.prisma.member.findMany({
-      where, orderBy: { fullName: 'asc' }, omit: MEMBER_PRIVATE, include: { chapter: true, sector: true },
+      where: { AND: and }, orderBy: { fullName: 'asc' }, omit: MEMBER_PRIVATE,
+      include: { chapter: true, sector: true, sectors: { orderBy: { sortOrder: 'asc' }, include: { sector: true } } },
     });
   }
 
@@ -37,7 +42,11 @@ export class MembersRepository {
     return this.prisma.member.findFirst({
       where: { OR: [{ slug }, ...(isUuid ? [{ id: slug }] : [])], isPublished: true },
       omit: { phone: true, userId: true, profileDraft: true },
-      include: { chapter: true, sector: true, tier: true, answers: { include: { question: true } } },
+      include: {
+        chapter: true, sector: true, tier: true, answers: { include: { question: true } },
+        sectors: { orderBy: { sortOrder: 'asc' }, include: { sector: true } },
+        interviews: { orderBy: { sortOrder: 'asc' } },
+      },
     });
   }
 

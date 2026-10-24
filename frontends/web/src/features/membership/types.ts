@@ -23,6 +23,12 @@ export interface Sector extends Timestamps {
   sortOrder: number;
 }
 
+export interface MemberSector {
+  id: string;
+  sortOrder: number;
+  sector: Sector;
+}
+
 export interface MembershipTier extends Timestamps {
   id: string;
   name: string;
@@ -87,10 +93,18 @@ export interface Member extends Timestamps {
   featuredNewMember: boolean;
   spotlightQuestion: string | null;
   spotlightAnswer: string | null;
+  /** Full position line as imported, e.g. "LONDON | Chairman | Acme | Private Equity". */
+  positionLine: string | null;
+  /** What the member's company does. */
+  companyDescription: string | null;
+  verified: boolean;
   /** Own profile only: saved-but-unsubmitted edits of a published member. */
   profileDraft?: ProfileInput | null;
   chapter?: Chapter | null;
+  /** Primary sector (also listed in `sectors`). */
   sector?: Sector | null;
+  /** Every sector the member works in, ordered by sortOrder (directory + profile). */
+  sectors?: MemberSector[];
   tier?: MembershipTier | null;
   answers?: MemberQuestionAnswer[];
   interviews?: MemberInterviewQA[];

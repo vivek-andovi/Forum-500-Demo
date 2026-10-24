@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthUser } from '../../core/auth/decorators';
 import { requireMember } from '../../core/common/member-context';
 import { MembersService } from '../membership/members.service';
+import { SiteService } from '../site/site.service';
 import { WhatsappRepository } from './whatsapp.repository';
 
 export const ChatMessageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
@@ -12,17 +13,24 @@ export class WhatsappService {
   constructor(
     private readonly repo: WhatsappRepository,
     private readonly members: MembersService,
+    private readonly site: SiteService,
   ) {}
 
-  /** All groups; invite links only appear on the member's approved memberships. */
+  /**
+   * All groups. Invite links appear on the member's approved memberships, or on every group
+   * when the `whatsappOpenAccess` feature is on (members of the old site could join any group).
+   */
   async overview(user: AuthUser) {
+    const { whatsappOpenAccess } = await this.site.features();
     const [groups, memberships] = await Promise.all([
-      this.repo.listActiveGroups(),
+      this.repo.listActiveGroups(whatsappOpenAccess && !!user.memberId),
       user.memberId ? this.repo.membershipsOf(user.memberId) : [],
     ]);
+    const showLink = (status: string) => whatsappOpenAccess || status === 'approved';
     return {
       groups,
-      memberships: memberships.map((m) => ({ ...m, group: { ...m.group, inviteLink: m.status === 'approved' ? m.group.inviteLink : null } })),
+      openAccess: whatsappOpenAccess,
+      memberships: memberships.map((m) => ({ ...m, group: { ...m.group, inviteLink: showLink(m.status) ? m.group.inviteLink : null } })),
     };
   }
 

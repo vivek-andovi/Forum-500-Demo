@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../core/auth/decorators';
 import { SiteService } from './site.service';
@@ -18,6 +18,12 @@ export class PublicSiteController {
   @Get('pages/:slug')
   page(@Param('slug') slug: string) {
     return this.site.page(slug);
+  }
+
+  /** Where an old forum.club (WordPress) URL lives now: `{ to: "/membership/jane-doe" }` or `{ to: null }`. */
+  @Get('redirect')
+  redirect(@Query('path') path?: string) {
+    return this.site.legacyRedirect(path ?? '');
   }
 }
 
