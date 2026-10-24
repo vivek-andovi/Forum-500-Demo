@@ -18,6 +18,7 @@
     "check:layers": "node scripts/check-layers.mjs",
     "test:e2e": "node --test test/*.test.mjs",
     "admin:create": "node scripts/create-admin.mjs",
+    "password:set": "node scripts/set-dev-password.mjs",
     "wp:import": "tsx scripts/import-wordpress/index.ts",
     "check:import": "tsc -p scripts/import-wordpress/tsconfig.json"
   },
