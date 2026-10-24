@@ -3,12 +3,10 @@ name: Frontend (admin) — CI
 # AWS Amplify Hosting deploys this app from the Git integration (see frontends/admin/amplify.yml)
 # (monorepo app root = frontends/admin; Amplify only rebuilds when files there change).
 # This workflow type-checks and builds every PR.
+# Automatic runs paused 2026-10-24 (failure emails; no deploy target yet). Run manually from the Actions tab.
+# To restore, bring back the push/pull_request triggers from git history.
 on:
-  push:
-    branches: [main, develop]
-    paths: ['frontends/admin/**', '.github/workflows/frontend-admin.yml']
-  pull_request:
-    paths: ['frontends/admin/**']
+  workflow_dispatch:
 
 defaults:
   run:

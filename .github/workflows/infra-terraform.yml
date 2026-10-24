@@ -2,12 +2,10 @@ name: Infrastructure — Terraform checks
 
 # Runs offline checks on every infra change (no AWS credentials needed):
 # formatting, validation, and mocked plans for staging + production (tests/plan.tftest.hcl).
+# Automatic runs paused 2026-10-24 (failure emails; no deploy target yet). Run manually from the Actions tab.
+# To restore, bring back the push/pull_request triggers from git history.
 on:
-  pull_request:
-    paths: ['infra/terraform/**', '.github/workflows/infra-terraform.yml']
-  push:
-    branches: [main, develop]
-    paths: ['infra/terraform/**']
+  workflow_dispatch:
 
 defaults:
   run:

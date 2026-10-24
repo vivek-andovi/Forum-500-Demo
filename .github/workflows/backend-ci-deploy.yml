@@ -1,11 +1,8 @@
 name: Backend — CI & Deploy to AWS ECS
 
+# Automatic runs paused 2026-10-24 (failure emails; no deploy target yet). Run manually from the Actions tab.
+# To restore, bring back the push/pull_request triggers from git history.
 on:
-  push:
-    branches: [main, develop]
-    paths: ['backends/**', '.github/workflows/backend-ci-deploy.yml']
-  pull_request:
-    paths: ['backends/**']
   workflow_dispatch:
 
 permissions:
