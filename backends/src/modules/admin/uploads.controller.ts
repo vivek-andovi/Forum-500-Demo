@@ -63,7 +63,11 @@ export class UploadsController {
     return { id: asset.id, url: asset.url };
   }
 
-  /** Step 1 of a direct-to-S3 upload for large files: returns a 5-minute presigned PUT URL. */
+  /**
+   * Step 1 of a direct-to-S3 upload for large files: returns a 5-minute presigned PUT URL.
+   * PENDING: not used by the admin app yet (it always posts to POST /admin/uploads). Kept for large
+   * files once S3 is set up; needs STORAGE_DRIVER=s3.
+   */
   @Post('presign')
   @HttpCode(200)
   async presign(@Body() body: unknown) {

@@ -17,7 +17,7 @@ Accounts needed: GitHub, Neon, Render, Vercel and Cloudflare. All of them let yo
 
 ## 1. Push the repo to GitHub
 ```bash
-cd "Forum Club/Monorepo"
+cd "Forum500/Monorepo"
 git add -A && git commit -m "Initial commit"
 gh auth login                                   # or create the repo on github.com
 gh repo create forum500 --private --source . --push

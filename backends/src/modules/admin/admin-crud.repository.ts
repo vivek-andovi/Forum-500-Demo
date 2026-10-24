@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { WITH_DELETED } from '../../core/prisma/audit-trail.extension';
-import { delegate } from '../../core/prisma/model-meta';
+import { compoundUniquesOf, delegate } from '../../core/prisma/model-meta';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { softDelete } from '../../core/prisma/soft-delete';
 
@@ -30,7 +30,25 @@ export class AdminCrudRepository {
     return this.delegate(model).findUnique(args);
   }
 
-  create(model: string, data: Args) {
+  /**
+   * Create, or revive the soft-deleted row that still holds this multi-column unique key
+   * (e.g. a member re-added to a sector after being removed). Soft delete only frees
+   * single-column uniques, so a plain create would fail with P2002.
+   */
+  async create(model: string, data: Args) {
+    for (const key of compoundUniquesOf(model)) {
+      if (!key.every((f) => data[f] != null)) continue;
+      const deleted = await this.delegate(model).findFirst({
+        where: { ...Object.fromEntries(key.map((f) => [f, data[f]])), deletedAt: { not: null } },
+        select: { id: true },
+      });
+      if (deleted) {
+        return this.delegate(model).update({
+          where: { id: deleted.id, deletedAt: { not: null } },
+          data: { ...data, deletedAt: null, deletedBy: null },
+        });
+      }
+    }
     return this.delegate(model).create({ data });
   }
 

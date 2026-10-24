@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Controller } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { usePageTitle } from "@/lib/use-page-title";
 import { recordHref, resourceHref } from "@/lib/meta";
 import { queryKeys, useRecord } from "@/lib/queries";
@@ -25,6 +25,7 @@ import { RelatedTabs } from "@/components/resource/related";
 import { BackLink, EditorHeader } from "@/components/resource/editor/editor-header";
 import { RecordDetails } from "@/components/resource/editor/record-details";
 import { useEditorModel } from "@/components/resource/editor/use-editor-model";
+import { toastError } from "@/components/common/problem-center";
 
 /** Create (no `id`) or edit page for any resource: header, workflow panel, fields, details, related tabs. */
 export function ResourceEditor({ resource, id }: { resource: ResourceMeta; id?: string }) {
@@ -106,7 +107,7 @@ function EditorForm({
     try {
       body = buildBody(values);
     } catch (e) {
-      toast.error(errorMessage(e));
+      toastError(e);
       return;
     }
     try {
@@ -130,7 +131,7 @@ function EditorForm({
         router.push(listHref);
       }
     } catch (e) {
-      toast.error(errorMessage(e));
+      toastError(e);
     }
   });
 

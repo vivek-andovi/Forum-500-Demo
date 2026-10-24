@@ -15,6 +15,11 @@ export class InboxController {
     return this.inbox.emails(user);
   }
 
+  @Get('emails/:id')
+  email(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.inbox.email(user, id);
+  }
+
   @Get('notifications')
   notifications(@CurrentUser() user: AuthUser) {
     return this.inbox.notifications(user);

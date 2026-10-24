@@ -133,7 +133,7 @@ DATABASE_URL=… node scripts/create-admin.mjs you@example.com 'A-strong-passwor
 - Copy only the files actually used (the media library + files linked in content). Not the 5.5 GB of resized copies.
 - Destination: the storage driver (local `uploads/` in dev, S3/R2 in production), under the key `wp/<YYYY>/<MM>/<filename>` (keeps the original names; easy to trace).
 - Each file → an `Asset` row (`driver`, `mime`, `size`, `createdBy='wp-import'`) so it shows in the admin media library.
-- `LegacyMap` keeps old URL → new URL; every imported text/URL field is rewritten through it (both `http://forum.club/…` and `https://forum.club/…` forms).
+- `LegacyMap` keeps old URL → new URL. Imported **file** URLs (`forum.club/wp-content/uploads/…`) are rewritten to the new storage. Links to old forum.club **pages** inside imported content (about 2,655 in newsletters: `/podcast/`, `/events2026/`, `/member/…`) are **not** rewritten; they work only once forum.club points at the new app, which redirects them through `LegacyMap` (`GET /public/redirect`). **PENDING:** DNS cut-over.
 - Production bucket needs **CORS** for the web origin (the gallery's copy/download uses `fetch`).
 
 ---

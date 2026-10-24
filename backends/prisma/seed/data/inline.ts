@@ -248,7 +248,7 @@ export const newsfeed_posts = [
 const coverAutumn = A("forecast-cover-autumn.jpg");
 const coverSummer = A("forecast-cover-summer.jpg");
 const globeHero = A("globe-hero.jpg");
-export const autumnArticles = [
+const autumnArticles = [
   {
     id: "forecast-1",
     section: "Macro",
@@ -336,7 +336,7 @@ export const autumnArticles = [
     ],
   },
 ];
-export const summerArticles = [
+const summerArticles = [
   {
     id: "summer-1",
     section: "Cities",

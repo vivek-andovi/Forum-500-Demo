@@ -28,11 +28,11 @@ export class WhatsappRepository {
     return this.prisma.whatsappMembership.findUnique({ where: { groupId_memberId: { groupId, memberId } } });
   }
 
-  requestJoin(groupId: string, memberId: string) {
+  requestJoin(groupId: string, memberId: string, status: 'requested' | 'approved') {
     return this.prisma.whatsappMembership.upsert({
       where: { groupId_memberId: { groupId, memberId } },
-      update: { status: 'requested' },
-      create: { groupId, memberId, status: 'requested' },
+      update: { status },
+      create: { groupId, memberId, status },
     });
   }
 

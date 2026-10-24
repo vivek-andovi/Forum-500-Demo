@@ -13,6 +13,15 @@ export function fieldsOf(model: string): Map<string, DmmfField> {
   return fields;
 }
 
+/** Multi-column unique keys per model (`@@unique([memberId, sectorId])`), which soft delete does not release. */
+const COMPOUND_UNIQUES = new Map<string, readonly (readonly string[])[]>(
+  Prisma.dmmf.datamodel.models.map((m) => [m.name, m.uniqueFields]),
+);
+
+export function compoundUniquesOf(model: string): readonly (readonly string[])[] {
+  return COMPOUND_UNIQUES.get(model) ?? [];
+}
+
 /** The Prisma delegate for a model name, e.g. delegate(db, 'EventRsvp') → db.eventRsvp. */
 export function delegate(db: object, model: string): any {
   return (db as any)[model.charAt(0).toLowerCase() + model.slice(1)];

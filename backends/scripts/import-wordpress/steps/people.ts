@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { isLegacyHash } from '../../../src/core/auth/legacy-password';
+import { softDelete } from '../../../src/core/prisma/soft-delete';
 import { Ctx, IMPORT_ACTOR } from '../lib/context';
 import { Media } from '../lib/media';
 import { phpUnserialize } from '../lib/php';
@@ -49,7 +51,7 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
     const existingChapters = await db.chapter.findMany({ select: { id: true, name: true } });
     const chapterKeys = new Set(CHAPTER_CITIES.map(nameKey));
     const regions = terms.filter((t) => t.tax === 'hp_listing_member_region');
-    ctx.report.expect('chapter', regions.length);
+    ctx.report.expect('region', regions.length);
     for (const [i, t] of regions.entries()) {
       const name = decodeEntities(t.name).trim();
       const isChapter = chapterKeys.has(nameKey(name));
@@ -59,19 +61,19 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
         create: () => db.chapter.create({ data: { ...data, createdBy: IMPORT_ACTOR } }),
         update: (id) => db.chapter.update({ where: { id }, data: { isChapter, whatsappEnabled: data.whatsappEnabled } }),
         exists: async (id) => !!(await db.chapter.findUnique({ where: { id }, select: { id: true } })),
-      }, { oldUrl: `/region/${slugify(name)}/`, newUrl: '/membership' });
+      });
       if (id) people.chapterByKey.set(nameKey(name), id);
     }
     const existingSectors = await db.sector.findMany({ select: { id: true, name: true } });
     const categories = terms.filter((t) => t.tax === 'hp_listing_category');
-    ctx.report.expect('sector', categories.length);
+    ctx.report.expect('category', categories.length);
     for (const [i, t] of categories.entries()) {
       const name = decodeEntities(t.name).trim();
       await ctx.upsert('category', t.termId, 'Sector', {
         find: async () => existingSectors.find((s) => nameKey(s.name) === nameKey(name)) ?? null,
         create: () => db.sector.create({ data: { name, sortOrder: i, createdBy: IMPORT_ACTOR } }),
         exists: async (id) => !!(await db.sector.findUnique({ where: { id }, select: { id: true } })),
-      }, { oldUrl: `/member-category/${slugify(name)}/`, newUrl: '/membership' });
+      });
     }
   });
 
@@ -103,7 +105,7 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
   );
   const termsOf = (id: number, tax: string) => termRows.filter((r) => r.id === id && r.tax === tax);
   ctx.report.expect('user', users.length);
-  ctx.report.expect('listing (member profile)', listings.length);
+  ctx.report.expect('listing', listings.length);
 
   // Staff accounts created several listings on behalf of members; real people have at most a duplicate or two.
   const byAuthor = new Map<number, Listing[]>();
@@ -129,6 +131,13 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
   for (const a of staffAuthors) {
     for (const l of byAuthor.get(a)!) {
       const key = nameKey(decodeEntities(l.title));
+      // A staff copy of someone who also has their own listing: keep only theirs.
+      const withOwnListing = users.filter((u) => u.id !== a && !staffAuthors.has(u.id) && primaryOf.has(u.id) && (fullNameKey(u) === key || nameKey(u.display ?? '') === key));
+      if (withOwnListing.length === 1) {
+        skipped.add(l.id);
+        ctx.report.issue('Duplicate listings (not imported)', `"${decodeEntities(l.title)}" (#${l.id}, ${l.status}): staff copy of ${withOwnListing[0].email}'s own listing (#${primaryOf.get(withOwnListing[0].id)}), which was kept`);
+        continue;
+      }
       const matches = users.filter((u) => (fullNameKey(u) === key || nameKey(u.display ?? '') === key) && (!primaryOf.has(u.id) || u.id === a));
       if (matches.length !== 1) continue;
       const u = matches[0];
@@ -161,7 +170,7 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
         // Only refresh the password if the person hasn't logged in to the new app yet (their hash is still the WordPress one).
         update: async (id) => {
           const cur = await db.user.findUnique({ where: { id }, select: { passwordHash: true } });
-          if (u.pass && (!cur?.passwordHash || /^\$(wp|P|H)\$/.test(cur.passwordHash))) {
+          if (u.pass && (!cur?.passwordHash || isLegacyHash(cur.passwordHash))) {
             await db.user.update({ where: { id }, data: { passwordHash: u.pass } });
           }
         },
@@ -174,9 +183,14 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
 
   // ───────────── Members (directory listings) ─────────────
   const takenSlugs = new Set((await db.member.findMany({ select: { slug: true } })).map((m) => m.slug));
-  const uniqueSlug = (base: string) => {
+  // A listing's own WordPress slug (post_name) is kept for it, so old /member/<slug>/ links land on the right
+  // person even when another profile without a post_name, processed earlier, would derive the same slug.
+  const reservedFor = new Map<string, number>();
+  for (const l of listings) if (l.slug && !skipped.has(l.id)) reservedFor.set(slugify(decodeSlug(l.slug)), l.id);
+  const uniqueSlug = (base: string, listingId?: number) => {
+    const free = (slug: string) => !takenSlugs.has(slug) && (reservedFor.get(slug) ?? listingId) === listingId;
     let slug = base;
-    for (let n = 2; takenSlugs.has(slug); n++) slug = `${base}-${n}`;
+    for (let n = 2; !free(slug); n++) slug = `${base}-${n}`;
     takenSlugs.add(slug);
     return slug;
   };
@@ -190,8 +204,7 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
     const { slugBase, ...fields } = data;
     const known = ctx.idOf(entity, legacyId);
     const existingSlug = known && !ctx.opt.dryRun ? (await db.member.findUnique({ where: { id: known }, select: { slug: true } }))?.slug : undefined;
-    const slug = existingSlug ?? uniqueSlug(slugBase);
-    if (existingSlug === undefined && known) takenSlugs.add(slug);
+    const slug = existingSlug ?? uniqueSlug(slugBase, entity === 'listing' ? legacyId : undefined);
     const id = await ctx.upsert(entity, legacyId, 'Member', {
       find: async () => (fields.userId ? db.member.findUnique({ where: { userId: fields.userId as string }, select: { id: true } }) : null),
       create: () => db.member.create({ data: { ...fields, slug, createdBy: IMPORT_ACTOR } }),
@@ -199,15 +212,7 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
       exists: async (id) => !!(await db.member.findUnique({ where: { id }, select: { id: true } })),
     }, { oldUrl, newUrl: `/membership/${slug}` });
     if (!id) return null;
-    if (!ctx.opt.dryRun) {
-      for (const [i, sectorId] of sectors.entries()) {
-        await db.memberSector.upsert({
-          where: { memberId_sectorId: { memberId: id, sectorId } },
-          create: { memberId: id, sectorId, sortOrder: i, createdBy: IMPORT_ACTOR },
-          update: { sortOrder: i },
-        });
-      }
-    }
+    for (const [i, sectorId] of sectors.entries()) await ctx.link('MemberSector', { memberId: id, sectorId }, { sortOrder: i }, { sortOrder: i });
     people.memberSlug.set(id, slug);
     return id;
   };
@@ -231,9 +236,8 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
       const userId = ownsThis ? userIdOf.get(owner.id) ?? null : null;
       const sectors = sectorIds(l.id);
       const bio = htmlToText(l.content) || null;
-      const decodedSlug = (() => { try { return decodeURIComponent(l.slug); } catch { return l.slug; } })();
       const id = await saveMember('listing', l.id, {
-        slugBase: slugify(decodedSlug || name),
+        slugBase: slugify(decodeSlug(l.slug) || name),
         fullName: name,
         positionLine: position,
         headline: headline ?? null,
@@ -318,9 +322,17 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
           exists: async (id) => !!(await db.memberInterviewQA.findUnique({ where: { id }, select: { id: true } })),
         });
       }
+      // The post now has fewer pairs than last run: remove the leftovers (unless changed in the app).
+      for (let i = qa.length, id = ctx.idOf('interview', `${post.id}:${i}`); id; id = ctx.idOf('interview', `${post.id}:${++i}`)) {
+        if (ctx.opt.dryRun || (await ctx.editedInApp('MemberInterviewQA', id))) continue;
+        if (await db.memberInterviewQA.findUnique({ where: { id }, select: { id: true } })) {
+          await softDelete(db, 'MemberInterviewQA', { id });
+          ctx.report.count('interview', 'removed (no longer in post)');
+        }
+      }
       if (featured.length < 10 && !featured.includes(member.id)) {
         featured.push(member.id);
-        if (!ctx.opt.dryRun) {
+        if (!ctx.opt.dryRun && !(await ctx.editedInApp('Member', member.id))) {
           await db.member.update({
             where: { id: member.id },
             data: { featuredNewMember: true, spotlightQuestion: qa[0].question, spotlightAnswer: qa[0].answer },
@@ -328,17 +340,30 @@ export async function importPeople(ctx: Ctx, media: Media, people: People) {
         }
       }
     }
-    // Only the ten newest interviews stay featured (among imported members).
+    // Only the ten newest interviews stay featured (among imported members nobody has edited in the app, so
+    // members an admin featured stay featured).
     if (!ctx.opt.dryRun) {
       const imported = [...people.memberByName.values()].map((m) => m.id).filter((id) => !featured.includes(id));
-      await db.member.updateMany({ where: { id: { in: imported }, featuredNewMember: true }, data: { featuredNewMember: false } });
+      await db.member.updateMany({
+        where: { id: { in: imported }, featuredNewMember: true, ...(ctx.opt.refresh ? {} : { OR: [{ updatedBy: null }, { updatedBy: IMPORT_ACTOR }] }) },
+        data: { featuredNewMember: false },
+      });
     }
     ctx.report.count('featured new members', 'set', featured.length);
   });
 }
 
+/** WordPress stores non-ASCII post_names percent-encoded. */
+function decodeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 /** "Question: …\n\nAnswer: …" text → pairs. */
-export function parseQA(text: string): { question: string; answer: string }[] {
+function parseQA(text: string): { question: string; answer: string }[] {
   const chunks = text.split(/(?:^|\n)\s*Q(?:uestion)?\s*[:.]\s*/i).slice(1);
   const out: { question: string; answer: string }[] = [];
   for (const chunk of chunks) {

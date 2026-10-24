@@ -40,9 +40,12 @@ interface Ctx {
   by: string | null;
 }
 
+/** Deleting a member cascades through ~17 tables, which can outlast Prisma's 5 s default. */
+const TRANSACTION_TIMEOUT_MS = 30_000;
+
 function inTransaction<T>(db: object, fn: (tx: object) => Promise<T>): Promise<T> {
-  const root = db as { $transaction?: (fn: (tx: object) => Promise<T>) => Promise<T> };
-  return typeof root.$transaction === 'function' ? root.$transaction(fn) : fn(db);
+  const root = db as { $transaction?: (fn: (tx: object) => Promise<T>, opts: { timeout: number }) => Promise<T> };
+  return typeof root.$transaction === 'function' ? root.$transaction(fn, { timeout: TRANSACTION_TIMEOUT_MS }) : fn(db);
 }
 
 async function removeRows(tx: object, model: string, rows: Record<string, any>[], ctx: Ctx): Promise<void> {

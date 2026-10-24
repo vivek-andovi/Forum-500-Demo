@@ -13,6 +13,7 @@ import { GROUP_ICONS } from "@/components/layout/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProblemDetailsButton } from "@/components/common/problem-center";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,7 +90,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       )}
       {meta.error && (
-        <p className="px-2 text-xs text-sidebar-foreground/60">Could not load resources.</p>
+        <p className="px-2 text-xs text-sidebar-foreground/60">
+          Could not load resources.
+          <ProblemDetailsButton error={meta.error} title="Couldn't load the admin menu" />
+        </p>
       )}
       {meta.data &&
         groupResources(meta.data.resources).map(([group, resources]) => {

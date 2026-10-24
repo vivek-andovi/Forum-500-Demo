@@ -30,6 +30,12 @@
 - **`POST /auth/forgot-password`** (limit: 5/min)
   - Body: `{ email }`
   - Always returns 200 and emails a reset link if the account exists.
+- **`POST /auth/magic-link`** (limit: 5/min)
+  - Body: `{ email }`
+  - Always returns 200 and emails a one-click sign-in link if the account exists (members imported from forum.club often have no usable password).
+- **`POST /auth/magic-link/consume`** (limit: 10/min)
+  - Body: `{ token }` from the emailed link.
+  - Returns the same shape as login.
 - **`POST /auth/set-password`** (limit: 10/min)
   - Body: `{ token, password }`
   - Accepts an invite or reset token from the emailed link (`/auth/set-password?token=…`).
@@ -304,10 +310,12 @@ type FieldMeta = {
 - **`POST /v1/introductions/:id/respond`**
   - Body: `{ accept: boolean }`
 - **`GET /v1/whatsapp`**
-  - Returns: `{ groups: WhatsappGroup[], memberships: WhatsappMembership[] }`
-  - The invite link is included only for approved memberships.
-- **`POST /v1/whatsapp/:id/join`**: creates a membership with status `requested`.
-- **`GET /v1/emails`**: returns `EmailCampaign[]` (sent, delivered to the member or to all) with an `unread` flag.
+  - Returns: `{ groups: WhatsappGroup[], memberships: WhatsappMembership[], openAccess: boolean }`
+  - The invite link is included only for approved memberships, or on every group when `openAccess` (the `features.whatsappOpenAccess` setting) is on.
+- **`POST /v1/whatsapp/:id/join`**: creates a membership with status `requested`, or `approved` straight away when `openAccess` is on (unless a host rejected the member before).
+- **`GET /v1/emails`**: returns `EmailCampaign[]` (sent, delivered to the member or to all) with an `unread` flag. List fields only: no `body` or `html`.
+  - `unread` is true only when the member has a delivery row they haven't opened. Campaigns sent to everyone (no delivery rows, like the imported newsletter archive) count as read.
+- **`GET /v1/emails/:id`**: one email with its `body` and `html`. Opening it marks the member's delivery as read.
 - **`GET /v1/notifications`**: returns `Notification[]` (the member's own plus broadcasts).
 - **`POST /v1/notifications/:id/read`**
 - **`GET /v1/actions`**: returns `ActionItem[]` (pending; the member's own or global).
@@ -343,7 +351,7 @@ type FieldMeta = {
 - **Limits:** messages up to 4000 characters; 30 requests per minute.
 
 ## WhatsApp group chat
-Both endpoints are for approved members of the group only; anyone else gets 403.
+Both endpoints are for approved members of the group only (or any member when `features.whatsappOpenAccess` is on, unless a host rejected them); anyone else gets 403.
 - **`GET /v1/whatsapp/:groupId/messages`**
   - Returns: `[{ id, authorName, authorSlug, authorPhotoUrl, body, createdAt, mine }]`, oldest first.
 - **`POST /v1/whatsapp/:groupId/messages`**
@@ -352,5 +360,6 @@ Both endpoints are for approved members of the group only; anyone else gets 403.
 
 ## Public API (no auth)
 - **`GET /public/inforum/current`**: returns the current edition with published articles where `visibility=public` or `editorsChoice`, up to 4.
+- **`GET /public/redirect?path=/old/forum.club/path/`**: where an old forum.club (WordPress) URL lives now. Returns `{ to: "/membership/jane-doe" }` or `{ to: null }`. The web app's not-found page uses it.
 - **`POST /public/applications`**
   - Body: the apply-form fields `{ fullName, email, phone?, linkedin?, role, company, sector, city, country, travelCities?: string[], recommenderName, recommenderRelation?, whyJoin, contribution, about? }`

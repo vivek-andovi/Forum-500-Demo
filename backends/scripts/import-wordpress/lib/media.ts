@@ -8,7 +8,7 @@ const MIME: Record<string, string> = {
   heic: 'image/heic', avif: 'image/avif', pdf: 'application/pdf', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav',
   mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', doc: 'application/msword', rtf: 'application/rtf', zip: 'application/zip',
 };
-export const mimeOf = (file: string) => MIME[extname(file).slice(1).toLowerCase()] ?? 'application/octet-stream';
+const mimeOf = (file: string) => MIME[extname(file).slice(1).toLowerCase()] ?? 'application/octet-stream';
 
 /** Hosts the old site's files were served from (live domain + the SiteGround staging alias). */
 const UPLOAD_URL = /(?:https?:)?\/\/(?:www\.)?(?:forum\.club|forum500\.club|jessicaj37\.sg-host\.com)\/wp-content\/uploads\/([^"'\s)<>?#\\]+)/gi;
@@ -29,6 +29,16 @@ export class Media {
   constructor(private readonly ctx: Ctx) {}
 
   async load() {
+    // PENDING (production storage not chosen yet): file URLs are saved into the imported rows as they are built
+    // now, so an import run against local storage bakes "http://localhost:4000/..." into avatars, newsletters and
+    // articles. Run the production import fresh, with the production storage settings, and never promote a
+    // rehearsal database.
+    const sample = this.storage.publicUrl('uploads/wp/example.jpg');
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)\b/i.test(sample)) {
+      const msg = `File URLs will point at ${new URL(sample).origin}. Fine for a local rehearsal; for production set STORAGE_DRIVER=s3 / ASSET_PUBLIC_BASE_URL first.`;
+      console.warn(`\n  WARNING: ${msg}\n`);
+      this.ctx.report.issue('Warnings', msg);
+    }
     const rows = await this.ctx.q<{ id: number; path: string }>(
       `SELECT post_id AS id, meta_value AS path FROM {postmeta} WHERE meta_key = '_wp_attached_file'`,
     );

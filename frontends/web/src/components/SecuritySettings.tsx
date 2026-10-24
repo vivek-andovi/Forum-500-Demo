@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { api, errorMessage, setToken } from "@/lib/api";
+import { api, setToken } from "@/lib/api";
+import { toastError } from "@/components/ProblemCenter";
 import { useSignOut } from "@/hooks/useAuth";
 import { FormField } from "@/components/form";
 import { passwordProblems } from "@/features/auth/password";
@@ -30,7 +31,7 @@ export function SecuritySettings() {
       setNext("");
       toast.success("Password updated. Your other devices have been signed out.");
     } catch (err) {
-      toast.error(errorMessage(err));
+      toastError(err);
     } finally {
       setBusy(null);
     }

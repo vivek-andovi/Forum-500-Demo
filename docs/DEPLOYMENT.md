@@ -1,6 +1,11 @@
 # Deployment
 
-Forum500 deploys to **AWS**. The full step-by-step guide is in [AWS_SETUP.md](AWS_SETUP.md).
+> **PENDING (24 Oct 2026):** no deploy target has been chosen yet, and nothing below has been created. The repo holds
+> four alternative setups (`infra/terraform`, `infra/aws/*.json`, `render.yaml` + [FREE_DEPLOY.md](FREE_DEPLOY.md),
+> and [deploy-plans/](deploy-plans/)); once one is picked, the others get deleted. The GitHub workflows run only when
+> started by hand (Actions → Run workflow) until then. `infra/aws/*.json` is a hand-kept copy of what Terraform builds.
+
+Forum500 is set up to deploy to **AWS**. The full step-by-step guide is in [AWS_SETUP.md](AWS_SETUP.md).
 
 | App | AWS service | Trigger | Config |
 |---|---|---|---|

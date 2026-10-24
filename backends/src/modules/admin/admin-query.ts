@@ -58,7 +58,8 @@ export function buildListQuery(
   }
   for (const [field, value] of filterEntries) {
     const f = fields.get(field);
-    if (!f || f.kind === 'object' || f.isList || f.type === 'Json') continue;
+    // deletedAt is left out: naming it in `where` switches off the soft-delete filter (see audit-trail.extension).
+    if (!f || f.kind === 'object' || f.isList || f.type === 'Json' || field === 'deletedAt') continue;
     if (f.kind === 'enum' && value !== 'null' && !(enumValues(f.type) ?? []).includes(value)) {
       throw new BadRequestException(`${humanize(field)} must be one of: ${(enumValues(f.type) ?? []).join(', ')}`);
     }

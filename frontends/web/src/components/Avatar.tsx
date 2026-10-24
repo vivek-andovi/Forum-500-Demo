@@ -1,6 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { initials } from "@/lib/format";
 
-/** Member photo with an initials fallback when avatarUrl is missing. */
+/** Member photo with an initials fallback when avatarUrl is missing or fails to load (the failure is still listed by ProblemCenter). */
 export function MemberAvatar({
   src,
   name,
@@ -10,9 +13,14 @@ export function MemberAvatar({
   name?: string | null;
   className?: string;
 }) {
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={name ?? ""} className={`${className} object-cover`} loading="lazy" />;
+  const [failed, setFailed] = useState<string | null>(null);
+  if (src && failed !== src) {
+    return (
+      <span data-own-fallback className="contents">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={name ?? ""} className={`${className} object-cover`} loading="lazy" onError={() => setFailed(src)} />
+      </span>
+    );
   }
   return (
     <div

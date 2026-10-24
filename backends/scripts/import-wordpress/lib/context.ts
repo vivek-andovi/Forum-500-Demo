@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { createPool, Pool, RowDataPacket } from 'mysql2/promise';
-import { auditTrail } from '../../../src/core/prisma/audit-trail.extension';
+import { auditTrail, WITH_DELETED } from '../../../src/core/prisma/audit-trail.extension';
+import { delegate, fieldsOf } from '../../../src/core/prisma/model-meta';
 
 export const IMPORT_ACTOR = 'wp-import';
 
@@ -13,6 +14,8 @@ export interface Options {
   reportDir: string;
   prefix: string;
   newsletterRecipients: boolean;
+  /** Also overwrite rows that were changed in the app since they were imported (normally kept as they are). */
+  refresh: boolean;
 }
 
 type Db = ReturnType<typeof createDb>;
@@ -55,7 +58,8 @@ export class Ctx {
   /**
    * Create or update one target row for a legacy row, remembering the link in LegacyMap.
    * - not imported before → `create()`
-   * - imported before and the row still exists → `update(id)` (re-runs refresh it)
+   * - imported before and the row still exists → `update(id)` (re-runs refresh it), unless it was
+   *   changed in the app since (an admin or the member edited it) → kept as it is, unless --refresh
    * - imported before but deleted since by an admin → left deleted (reported)
    * In a dry run nothing is written and a placeholder id is returned.
    */
@@ -79,17 +83,41 @@ export class Ctx {
         this.report.count(entity, 'skipped (deleted in app)');
         return null;
       }
-      if (ops.update) await ops.update(known);
+      const kept = ops.update && (await this.editedInApp(model, known));
+      if (ops.update && !kept) await ops.update(known);
       await this.remember(entity, legacyId, model, known, urls);
-      this.report.count(entity, 'updated');
+      this.report.count(entity, !ops.update ? 'unchanged' : kept ? 'kept (changed in app)' : 'updated');
       return known;
     }
     const existing = ops.find ? await ops.find() : null;
     const id = existing ? existing.id : (await ops.create()).id;
-    if (existing && ops.update) await ops.update(existing.id);
+    if (existing && ops.update && !(await this.editedInApp(model, existing.id))) await ops.update(existing.id);
     await this.remember(entity, legacyId, model, id, urls);
     this.report.count(entity, existing ? 'linked to existing' : 'created');
     return id;
+  }
+
+  /**
+   * True when someone changed the row in the app after it was imported: the app stamps `updatedBy` with the
+   * acting user, while the importer leaves it empty or 'wp-import'. Always false with --refresh.
+   */
+  async editedInApp(model: string, id: string): Promise<boolean> {
+    if (this.opt.refresh || !fieldsOf(model).has('updatedBy')) return false;
+    const row = await delegate(this.db, model).findUnique({ where: { id }, select: { updatedBy: true } });
+    return !!row?.updatedBy && row.updatedBy !== IMPORT_ACTOR;
+  }
+
+  /**
+   * Create a join row (e.g. MemberSector) if missing, or update the live one. A row an admin deleted stays
+   * deleted: a plain Prisma upsert would revive it.
+   */
+  async link(model: string, key: Record<string, unknown>, create: Record<string, unknown>, update: Record<string, unknown>) {
+    if (this.opt.dryRun) return;
+    const d = delegate(this.db, model);
+    const row = await d.findFirst({ where: { ...key, ...WITH_DELETED }, select: { id: true, deletedAt: true, updatedBy: true } });
+    if (!row) await d.create({ data: { ...key, ...create, createdBy: IMPORT_ACTOR } });
+    else if (row.deletedAt) this.report.count(model, 'skipped (deleted in app)');
+    else if (this.opt.refresh || !row.updatedBy || row.updatedBy === IMPORT_ACTOR) await d.update({ where: { id: row.id }, data: update });
   }
 
   private async remember(entity: string, legacyId: string | number, model: string, newId: string, urls?: { oldUrl?: string | null; newUrl?: string | null }) {
@@ -133,8 +161,18 @@ export class Ctx {
   }
 }
 
+/**
+ * Display names for LegacyMap entity keys. expect() and count() both use the entity key, so the
+ * "Expected" and "Result" columns line up on one row.
+ */
+const LABELS: Record<string, string> = {
+  region: 'chapter', category: 'sector', listing: 'listing (member profile)', 'user-profile': 'login without listing (hidden profile)',
+  whatsapp: 'whatsapp group', flipbook: 'magazine (flipbook)', podcast: 'podcast episode', 'gallery-photo': 'gallery photo',
+  post: 'blog post', report: 'event write-up',
+};
+
 /** Counts per entity, plus lists of things a person should look at. */
-export class Report {
+class Report {
   readonly counts = new Map<string, Map<string, number>>();
   readonly issues = new Map<string, string[]>();
   readonly expected = new Map<string, number>();
@@ -167,7 +205,7 @@ export class Report {
       const parts = [...(this.counts.get(e) ?? new Map()).entries()].map(([k, v]) => `${v} ${k}`);
       if (this.notes.has(e)) parts.push(this.notes.get(e)!);
       const result = parts.join(', ') || '—';
-      out.push(`| ${e} | ${this.expected.get(e) ?? ''} | ${result} |`);
+      out.push(`| ${LABELS[e] ?? e} | ${this.expected.get(e) ?? ''} | ${result} |`);
     }
     for (const [section, lines] of this.issues) {
       out.push('', `## ${section} (${lines.length})`, '');

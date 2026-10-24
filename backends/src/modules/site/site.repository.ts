@@ -39,7 +39,10 @@ export class SiteRepository {
   }
 
   findLegacyRedirect(paths: string[]) {
-    return this.prisma.legacyMap.findFirst({ where: { oldUrl: { in: paths }, newUrl: { not: null } }, select: { newUrl: true } });
+    // Newest first, so a re-import that moved an old URL wins over the stale entry.
+    return this.prisma.legacyMap.findFirst({
+      where: { oldUrl: { in: paths }, newUrl: { not: null } }, orderBy: { updatedAt: 'desc' }, select: { newUrl: true },
+    });
   }
 
   findSetting(key: string) {

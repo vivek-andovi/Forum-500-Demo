@@ -99,7 +99,7 @@ export async function coerceWrite(
 }
 
 /** Field-level rules on top of type coercion: safe URLs, emails, slugs, lengths. */
-export function validateString(meta: AdminMetadataService, res: ResourceConfig, f: DmmfField, v: string): string {
+function validateString(meta: AdminMetadataService, res: ResourceConfig, f: DmmfField, v: string): string {
   const fm = meta.fieldMeta(res, f, meta.relations(res));
   const label = humanize(f.name);
   if (v.length > 50_000) throw new BadRequestException(`${label} is too long`);

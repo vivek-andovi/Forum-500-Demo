@@ -1,5 +1,6 @@
 import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProblemDetailsButton } from "@/components/common/problem-center";
 
 export function EmptyState({
   title,
@@ -31,7 +32,10 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
       <p className="text-sm font-semibold text-destructive">Something went wrong</p>
-      <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{message}</p>
+      <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+        {message}
+        <ProblemDetailsButton error={error} />
+      </p>
       {onRetry && (
         <button
           type="button"

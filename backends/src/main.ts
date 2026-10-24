@@ -49,5 +49,10 @@ async function bootstrap() {
 
   await app.listen(cfg.PORT);
   console.log(`Forum500 API listening on http://localhost:${cfg.PORT}/api (storage=${cfg.STORAGE_DRIVER}, mail=${cfg.MAIL_DRIVER})`);
+  if (cfg.NODE_ENV === 'production' && cfg.MAIL_DRIVER === 'log') {
+    // PENDING (email provider not set up yet): with the log driver, invite / magic-link / password-reset links
+    // are written to the server log instead of being emailed. Switch to MAIL_DRIVER=ses before real members use it.
+    console.warn('WARNING: MAIL_DRIVER=log in production: sign-in and reset links go to the log, not to members. Set MAIL_DRIVER=ses before go-live.');
+  }
 }
 bootstrap();

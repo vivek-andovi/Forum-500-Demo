@@ -146,7 +146,7 @@ export function ResourceTable({
               {list.isLoading &&
                 Array.from({ length: Math.min(state.pageSize, 8) }).map((_, i) => (
                   <TableRow key={i}>
-                    {columns.map((c, j) => (
+                    {columns.map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-full max-w-40" />
                       </TableCell>

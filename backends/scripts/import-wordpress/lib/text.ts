@@ -49,7 +49,7 @@ export const htmlToText = (html: string | null | undefined) => htmlToParagraphs(
 /** Plain text (already decoded) → paragraphs on blank lines. */
 export const textParagraphs = (s: string) => s.split(/\n\s*\n+/).map(tidy).filter(Boolean);
 
-export function stripAccents(s: string): string {
+function stripAccents(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
+import { ProblemDetailsButton } from "@/components/ProblemCenter";
 import { errorMessage } from "@/lib/api";
 
 /** Loading / error / empty placeholder used by every API-backed section. */
@@ -30,6 +31,7 @@ export function QueryState({
     return (
       <div className={`rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive ${className}`}>
         {errorMessage(error)}
+        <ProblemDetailsButton error={error} />
       </div>
     );
   if (empty)

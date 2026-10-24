@@ -56,6 +56,7 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
-      # Emails are printed to the Render log until a real mail provider is added.
+      # PENDING: emails are printed to the Render log until a real mail provider is added. That includes sign-in,
+      # invite and password-reset links, so don't invite real members on this setting (the API warns at startup).
       - key: MAIL_DRIVER
         value: log
